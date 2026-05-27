@@ -14,7 +14,7 @@ import (
 
 	"github.com/joho/godotenv"
 )
-var lastUpdateID = 0
+
 const (
 	baseURL = "https://v3.football.api-sports.io"
 )
@@ -23,6 +23,7 @@ var (
 	lastGoals     = 0
 	selectedMatch = 0
 	matchMap      = map[int]int{}
+	lastUpdateID  = 0
 )
 
 type FixtureResponse struct {
@@ -145,8 +146,6 @@ func sendTodayMatches() {
 	message :=
 		"📅 Match Hari Ini\n\n"
 
-	matchMap = map[int]int{}
-
 	index := 1
 
 	for _, match := range data.Response {
@@ -176,18 +175,12 @@ func sendTodayMatches() {
 			wib.Format("15:04"),
 		)
 
-		matchMap[index] =
-			match.Fixture.ID
-
 		index++
 
 		if index > 10 {
 			break
 		}
 	}
-
-	message +=
-		"Reply angka untuk pilih match"
 
 	sendTelegram(message)
 }
@@ -215,10 +208,10 @@ func sendLiveMatches() bool {
 		return false
 	}
 
+	matchMap = map[int]int{}
+
 	message :=
 		"🔥 LIVE NOW\n\n"
-
-	matchMap = map[int]int{}
 
 	index := 1
 
@@ -249,114 +242,140 @@ func sendLiveMatches() bool {
 	}
 
 	message +=
-		"Reply angka untuk watch"
+		"Reply: /watch nomor"
 
 	sendTelegram(message)
 
 	return true
 }
+
 func getTelegramUpdates() {
 
- token := os.Getenv("BOT_TOKEN")
+	token := os.Getenv("BOT_TOKEN")
 
- url := fmt.Sprintf(
-  "https://api.telegram.org/bot%s/getUpdates?offset=%d",
-  token,
-  lastUpdateID+1,
- )
+	url := fmt.Sprintf(
+		"https://api.telegram.org/bot%s/getUpdates?offset=%d",
+		token,
+		lastUpdateID+1,
+	)
 
- resp, err := http.Get(url)
+	resp, err := http.Get(url)
 
- if err != nil {
-  return
- }
+	if err != nil {
+		return
+	}
 
- defer resp.Body.Close()
+	defer resp.Body.Close()
 
- body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
- var result map[string]interface{}
+	var result map[string]interface{}
 
- json.Unmarshal(body, &result)
+	json.Unmarshal(body, &result)
 
- resultsRaw, ok :=
-  result["result"]
+	resultsRaw, ok :=
+		result["result"]
 
- if !ok {
-  return
- }
+	if !ok {
+		return
+	}
 
- results :=
-  resultsRaw.([]interface{})
+	results :=
+		resultsRaw.([]interface{})
 
- if len(results) == 0 {
-  return
- }
+	if len(results) == 0 {
+		return
+	}
 
- for _, item := range results {
+	for _, item := range results {
 
-  update :=
-   item.(map[string]interface{})
+		update :=
+			item.(map[string]interface{})
 
-  updateID :=
-   int(
-    update["update_id"].(float64),
-   )
+		updateID :=
+			int(
+				update["update_id"].(float64),
+			)
 
-  lastUpdateID = updateID
+		lastUpdateID = updateID
 
-  messageRaw, ok :=
-   update["message"]
+		messageRaw, ok :=
+			update["message"]
 
-  if !ok {
-   continue
-  }
+		if !ok {
+			continue
+		}
 
-  message :=
-   messageRaw.(map[string]interface{})
+		message :=
+			messageRaw.(map[string]interface{})
 
-  textRaw, ok :=
-   message["text"]
+		textRaw, ok :=
+			message["text"]
 
-  if !ok {
-   continue
-  }
+		if !ok {
+			continue
+		}
 
-  text :=
-   textRaw.(string)
+		text :=
+			textRaw.(string)
 
-  fmt.Println(
-   "telegram text:",
-   text,
-  )
+		fmt.Println(
+			"telegram text:",
+			text,
+		)
 
-  number, err :=
-   strconv.Atoi(
-    strings.TrimSpace(text),
-   )
+		text =
+			strings.TrimSpace(text)
 
-  if err != nil {
-   continue
-  }
+		if !strings.HasPrefix(
+			text,
+			"/watch",
+		) {
 
-  matchID :=
-   matchMap[number]
+			continue
+		}
 
-  if matchID == 0 {
-   continue
-  }
+		parts :=
+			strings.Split(
+				text,
+				" ",
+			)
 
-  selectedMatch = matchID
+		if len(parts) < 2 {
+			continue
+		}
 
-  lastGoals = 0
+		number, err :=
+			strconv.Atoi(parts[1])
 
-  sendTelegram(
-   fmt.Sprintf(
-    "✅ Watching match #%d",
-    number,
-   ),
-  )
- }
+		if err != nil {
+			continue
+		}
+
+		matchID :=
+			matchMap[number]
+
+		if matchID == 0 {
+
+			sendTelegram(
+				"❌ Match tidak ditemukan",
+			)
+
+			continue
+		}
+
+		selectedMatch =
+			matchID
+
+		lastGoals = 0
+
+		sendTelegram(
+			fmt.Sprintf(
+				"✅ Watching match #%d",
+				number,
+			),
+		)
+	}
 }
 
 func getLiveMatches() int {
@@ -510,17 +529,15 @@ func main() {
 		"⚽ Football Bot Started",
 	)
 
-	// cek live dulu
 	hasLive :=
 		sendLiveMatches()
 
-	// kalau tidak ada live
 	if !hasLive {
 
 		sendTodayMatches()
 	}
 
-	// telegram polling cepat
+	// telegram loop
 	go func() {
 
 		for {

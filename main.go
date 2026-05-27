@@ -69,7 +69,7 @@ type FixtureResponse struct {
 			ID int `json:"id"`
 
 			Status struct {
-				Elapsed string `json:"elapsed"`
+				Elapsed int		`json:"elapsed"`
 				Short   string `json:"short"`
 			} `json:"status"`
 
@@ -215,7 +215,7 @@ func sendUpcomingMatches() {
 
 	index := 1
 
-	for day := 0; day < 3; day++ {
+	for day := 0; day < 30; day++ {
 
 		date :=
 			now.AddDate(
@@ -450,7 +450,7 @@ func getStatsText(
 
 			"⚽ %s %d - %d %s\n\n"+
 
-			"⏱ %s'\n\n"+
+			"⏱ %d'\n\n"+
 
 			"📊 Possession\n"+
 			"%s vs %s\n\n"+

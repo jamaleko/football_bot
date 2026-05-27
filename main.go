@@ -65,26 +65,45 @@ type FixtureResponse struct {
 
 func sendTelegram(message string) {
 
-	token := os.Getenv("BOT_TOKEN")
-	chatID := os.Getenv("CHAT_ID")
+ token := os.Getenv("BOT_TOKEN")
+ chatID := os.Getenv("CHAT_ID")
 
-	url := fmt.Sprintf(
-		"https://api.telegram.org/bot%s/sendMessage",
-		token,
-	)
+ url := fmt.Sprintf(
+  "https://api.telegram.org/bot%s/sendMessage",
+  token,
+ )
 
-	payload := map[string]string{
-		"chat_id": chatID,
-		"text":    message,
-	}
+ payload := map[string]string{
+  "chat_id": chatID,
+  "text":    message,
+ }
 
-	body, _ := json.Marshal(payload)
+ body, _ := json.Marshal(payload)
 
-	http.Post(
-		url,
-		"application/json",
-		bytes.NewBuffer(body),
-	)
+ resp, err := http.Post(
+  url,
+  "application/json",
+  bytes.NewBuffer(body),
+ )
+
+ if err != nil {
+
+  fmt.Println(
+   "telegram error:",
+   err,
+  )
+
+  return
+ }
+
+ defer resp.Body.Close()
+
+ respBody, _ := io.ReadAll(resp.Body)
+
+ fmt.Println(
+  "telegram response:",
+  string(respBody),
+ )
 }
 
 func apiRequest(url string) ([]byte, error) {

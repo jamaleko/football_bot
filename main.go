@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	//"log"
+	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -15,12 +16,15 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const baseURL = "https://v3.football.api-sports.io"
+const (
+	baseURL = "https://v3.football.api-sports.io"
+)
 
 var (
-	isWatching     = false
-	selectedMatch  = 0
-	lastGoals      = 0
+	selectedMatch int
+	isWatching    bool
+	lastGoals     int
+	lastUpdateID  int
 )
 
 var priorityLeagues = []string{
@@ -89,15 +93,43 @@ type FixtureResponse struct {
 	} `json:"response"`
 }
 
+type TelegramResponse struct {
+	Ok bool `json:"ok"`
+
+	Result []struct {
+
+		UpdateID int `json:"update_id"`
+
+		Message struct {
+
+			Text string `json:"text"`
+
+			Chat struct {
+				ID int64 `json:"id"`
+			} `json:"chat"`
+
+		} `json:"message"`
+
+	} `json:"result"`
+}
+
+type MatchItem struct {
+	ID    int
+	Title string
+}
+
+var currentMatches []MatchItem
+
 func sendTelegram(message string) {
 
 	token := os.Getenv("BOT_TOKEN")
 	chatID := os.Getenv("CHAT_ID")
 
-	url := fmt.Sprintf(
-		"https://api.telegram.org/bot%s/sendMessage",
-		token,
-	)
+	url :=
+		fmt.Sprintf(
+			"https://api.telegram.org/bot%s/sendMessage",
+			token,
+		)
 
 	payload := map[string]interface{}{
 		"chat_id": chatID,
@@ -111,16 +143,6 @@ func sendTelegram(message string) {
 		"application/json",
 		bytes.NewBuffer(body),
 	)
-}
-
-func sendMenu() {
-
-	message :=
-		"⚽ FOOTBALL BOT\n\n" +
-			"/startbot\n" +
-			"/stopbot"
-
-	sendTelegram(message)
 }
 
 func apiRequest(url string) ([]byte, error) {
@@ -164,16 +186,27 @@ func isPriorityLeague(name string) bool {
 	return false
 }
 
+func sendMenu() {
+
+	message :=
+		"⚽ FOOTBALL BOT\n\n" +
+			"/startbot\n" +
+			"/random\n" +
+			"/stopbot"
+
+	sendTelegram(message)
+}
+
 func sendUpcomingMatches() {
 
-	now := time.Now()
+	currentMatches = nil
 
-	matchIndex := 1
+	now := time.Now()
 
 	message :=
 		"📅 BIG MATCHES\n\n"
 
-	matchMap := map[int]int{}
+	index := 1
 
 	for day := 0; day < 3; day++ {
 
@@ -231,67 +264,92 @@ func sendUpcomingMatches() {
 					),
 				)
 
-			message += fmt.Sprintf(
-				"%d. 🌍 %s\n"+
-					"🏆 %s\n"+
-					"⚽ %s vs %s\n"+
-					"🕒 %s WIB\n\n",
+			title :=
+				fmt.Sprintf(
+					"%d. 🌍 %s\n"+
+						"🏆 %s\n"+
+						"⚽ %s vs %s\n"+
+						"🕒 %s WIB\n\n",
 
-				matchIndex,
+					index,
 
-				match.League.Country,
-				match.League.Name,
+					match.League.Country,
+					match.League.Name,
 
-				match.Teams.Home.Name,
-				match.Teams.Away.Name,
+					match.Teams.Home.Name,
+					match.Teams.Away.Name,
 
-				wib.Format(
-					"02 Jan 15:04",
-				),
-			)
+					wib.Format(
+						"02 Jan 15:04",
+					),
+				)
 
-			matchMap[matchIndex] =
-				match.Fixture.ID
+			message += title
 
-			matchIndex++
+			currentMatches =
+				append(
+					currentMatches,
+					MatchItem{
+						ID:    match.Fixture.ID,
+						Title: title,
+					},
+				)
 
-			if matchIndex > 10 {
+			index++
+
+			if index > 10 {
 				break
 			}
 		}
 	}
 
-	sendTelegram(message)
+	message +=
+		"\nReply nomor match.\nContoh: 1"
 
-	selectMatch(matchMap)
+	sendTelegram(message)
 }
 
-func selectMatch(matchMap map[int]int) {
+func watchRandomLiveMatch() {
 
-	fmt.Println("\nPilih nomor match:")
+	url :=
+		fmt.Sprintf(
+			"%s/fixtures?live=all",
+			baseURL,
+		)
 
-	var input string
-
-	fmt.Scanln(&input)
-
-	number, err :=
-		strconv.Atoi(input)
+	body, err :=
+		apiRequest(url)
 
 	if err != nil {
-		fmt.Println("input salah")
 		return
 	}
 
-	matchID :=
-		matchMap[number]
+	var data FixtureResponse
 
-	if matchID == 0 {
-		fmt.Println("match tidak ditemukan")
+	json.Unmarshal(
+		body,
+		&data,
+	)
+
+	if len(data.Response) == 0 {
+
+		sendTelegram(
+			"❌ Tidak ada live match",
+		)
+
 		return
 	}
+
+	randomIndex :=
+		rand.Intn(
+			len(data.Response),
+		)
+
+	match :=
+		data.Response[randomIndex]
 
 	selectedMatch =
-		matchID
+		match.Fixture.ID
 
 	lastGoals = 0
 
@@ -299,8 +357,19 @@ func selectMatch(matchMap map[int]int) {
 
 	sendTelegram(
 		fmt.Sprintf(
-			"👀 Watching Match #%d",
-			number,
+			"🎲 RANDOM MATCH\n\n"+
+				"🌍 %s\n"+
+				"🏆 %s\n"+
+				"⚽ %s %d - %d %s",
+
+			match.League.Country,
+			match.League.Name,
+
+			match.Teams.Home.Name,
+			match.Goals.Home,
+
+			match.Goals.Away,
+			match.Teams.Away.Name,
 		),
 	)
 
@@ -320,6 +389,10 @@ func watchLoop() {
 }
 
 func watchMatch() {
+
+	if selectedMatch == 0 {
+		return
+	}
 
 	url :=
 		fmt.Sprintf(
@@ -454,6 +527,12 @@ func watchMatch() {
 			redH, redA,
 		)
 
+	fmt.Println(
+		"\n====================",
+	)
+
+	fmt.Println(message)
+
 	if totalGoals > lastGoals {
 
 		lastGoals = totalGoals
@@ -468,7 +547,123 @@ func watchMatch() {
 	}
 }
 
+func getTelegramUpdates() {
+
+	token := os.Getenv("BOT_TOKEN")
+
+	for {
+
+		url :=
+			fmt.Sprintf(
+				"https://api.telegram.org/bot%s/getUpdates?offset=%d",
+				token,
+				lastUpdateID+1,
+			)
+
+		resp, err :=
+			http.Get(url)
+
+		if err != nil {
+
+			time.Sleep(
+				3 * time.Second,
+			)
+
+			continue
+		}
+
+		body, _ :=
+			io.ReadAll(resp.Body)
+
+		resp.Body.Close()
+
+		var data TelegramResponse
+
+		json.Unmarshal(
+			body,
+			&data,
+		)
+
+		for _, update := range data.Result {
+
+			lastUpdateID =
+				update.UpdateID
+
+			text :=
+				strings.TrimSpace(
+					update.Message.Text,
+				)
+
+			fmt.Println(
+				"telegram:",
+				text,
+			)
+
+			switch {
+
+			case text == "/startbot":
+
+				sendUpcomingMatches()
+
+			case text == "/random":
+
+				watchRandomLiveMatch()
+
+			case text == "/stopbot":
+
+				isWatching = false
+				selectedMatch = 0
+
+				sendTelegram(
+					"🛑 Bot stopped",
+				)
+
+			default:
+
+				number, err :=
+					strconv.Atoi(text)
+
+				if err != nil {
+					continue
+				}
+
+				if number < 1 ||
+					number > len(currentMatches) {
+
+					sendTelegram(
+						"❌ Nomor tidak valid",
+					)
+
+					continue
+				}
+
+				selectedMatch =
+					currentMatches[number-1].ID
+
+				lastGoals = 0
+
+				isWatching = true
+
+				sendTelegram(
+					"👀 Watching\n\n" +
+						currentMatches[number-1].Title,
+				)
+
+				go watchLoop()
+			}
+		}
+
+		time.Sleep(
+			2 * time.Second,
+		)
+	}
+}
+
 func main() {
+
+	rand.Seed(
+		time.Now().UnixNano(),
+	)
 
 	godotenv.Load()
 
@@ -478,44 +673,9 @@ func main() {
 
 	sendMenu()
 
-	for {
+	log.Println(
+		"Bot running...",
+	)
 
-		fmt.Println(
-			"\n/startbot atau /stopbot",
-		)
-
-		var input string
-
-		fmt.Scanln(&input)
-
-		switch input {
-
-		case "/startbot":
-
-			if isWatching {
-
-				fmt.Println(
-					"bot already running",
-				)
-
-				continue
-			}
-
-			sendUpcomingMatches()
-
-		case "/stopbot":
-
-			isWatching = false
-
-			selectedMatch = 0
-
-			sendTelegram(
-				"🛑 Bot Stopped",
-			)
-
-			fmt.Println(
-				"bot stopped",
-			)
-		}
-	}
+	getTelegramUpdates()
 }

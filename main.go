@@ -1,469 +1,553 @@
 package main
 
 import (
- "bytes"
- "encoding/json"
- "fmt"
- "io"
- "log"
- "net/http"
- "os"
- "strconv"
- "strings"
- "time"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
- "github.com/joho/godotenv"
+	"github.com/joho/godotenv"
 )
 
 const (
- baseURL = "https://v3.football.api-sports.io"
+	baseURL = "https://v3.football.api-sports.io"
 )
 
 var (
- lastGoals     = 0
- selectedMatch = 0
- matchMap      = map[int]int{}
+	lastGoals     = 0
+	selectedMatch = 0
+	matchMap      = map[int]int{}
 )
 
 type FixtureResponse struct {
- Response []struct {
-  Fixture struct {
-   ID int `json:"id"`
+	Response []struct {
+		Fixture struct {
+			ID int `json:"id"`
 
-   Status struct {
-    Elapsed int `json:"elapsed"`
-   } `json:"status"`
+			Status struct {
+				Elapsed int `json:"elapsed"`
+			} `json:"status"`
 
-   Date string `json:"date"`
-  } `json:"fixture"`
+			Date string `json:"date"`
+		} `json:"fixture"`
 
-  Teams struct {
-   Home struct {
-    Name string `json:"name"`
-   } `json:"home"`
+		Teams struct {
+			Home struct {
+				Name string `json:"name"`
+			} `json:"home"`
 
-   Away struct {
-    Name string `json:"name"`
-   } `json:"away"`
-  } `json:"teams"`
+			Away struct {
+				Name string `json:"name"`
+			} `json:"away"`
+		} `json:"teams"`
 
-  Goals struct {
-   Home int `json:"home"`
-   Away int `json:"away"`
-  } `json:"goals"`
+		Goals struct {
+			Home int `json:"home"`
+			Away int `json:"away"`
+		} `json:"goals"`
 
-  Statistics []struct {
-   Team struct {
-    Name string `json:"name"`
-   } `json:"team"`
+		Statistics []struct {
+			Team struct {
+				Name string `json:"name"`
+			} `json:"team"`
 
-   Statistics []struct {
-    Type  string      `json:"type"`
-    Value interface{} `json:"value"`
-   } `json:"statistics"`
-  } `json:"statistics"`
- } `json:"response"`
+			Statistics []struct {
+				Type  string      `json:"type"`
+				Value interface{} `json:"value"`
+			} `json:"statistics"`
+		} `json:"statistics"`
+	} `json:"response"`
 }
 
 func sendTelegram(message string) {
 
- token := os.Getenv("BOT_TOKEN")
- chatID := os.Getenv("CHAT_ID")
+	token := os.Getenv("BOT_TOKEN")
+	chatID := os.Getenv("CHAT_ID")
 
- url := fmt.Sprintf(
-  "https://api.telegram.org/bot%s/sendMessage",
-  token,
- )
+	url := fmt.Sprintf(
+		"https://api.telegram.org/bot%s/sendMessage",
+		token,
+	)
 
- payload := map[string]string{
-  "chat_id": chatID,
-  "text":    message,
- }
+	payload := map[string]string{
+		"chat_id": chatID,
+		"text":    message,
+	}
 
- body, _ := json.Marshal(payload)
+	body, _ := json.Marshal(payload)
 
- http.Post(
-  url,
-  "application/json",
-  bytes.NewBuffer(body),
- )
+	http.Post(
+		url,
+		"application/json",
+		bytes.NewBuffer(body),
+	)
 }
 
 func apiRequest(url string) ([]byte, error) {
 
- req, _ := http.NewRequest(
-  "GET",
-  url,
-  nil,
- )
+	req, _ := http.NewRequest(
+		"GET",
+		url,
+		nil,
+	)
 
- req.Header.Set(
-  "x-apisports-key",
-  os.Getenv("FOOTBALL_API_KEY"),
- )
+	req.Header.Set(
+		"x-apisports-key",
+		os.Getenv("FOOTBALL_API_KEY"),
+	)
 
- client := &http.Client{}
+	client := &http.Client{}
 
- resp, err := client.Do(req)
+	resp, err := client.Do(req)
 
- if err != nil {
-  return nil, err
- }
+	if err != nil {
+		return nil, err
+	}
 
- defer resp.Body.Close()
+	defer resp.Body.Close()
 
- return io.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }
 
 func sendTodayMatches() {
 
- today :=
-  time.Now().Format("2006-01-02")
+	today :=
+		time.Now().Format("2006-01-02")
 
- url :=
-  fmt.Sprintf(
-   "%s/fixtures?date=%s",
-   baseURL,
-   today,
-  )
+	url :=
+		fmt.Sprintf(
+			"%s/fixtures?date=%s",
+			baseURL,
+			today,
+		)
 
- body, err := apiRequest(url)
+	body, err := apiRequest(url)
 
- if err != nil {
-  log.Println(err)
-  return
- }
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
- var data FixtureResponse
+	var data FixtureResponse
 
- json.Unmarshal(body, &data)
+	json.Unmarshal(body, &data)
 
- if len(data.Response) == 0 {
-  return
- }
+	if len(data.Response) == 0 {
+		return
+	}
 
- message :=
-  "📅 Match Hari Ini\n\n"
+	message :=
+		"📅 Match Hari Ini\n\n"
 
- index := 1
+	matchMap = map[int]int{}
 
- for _, match := range data.Response {
+	index := 1
 
-  matchTime, _ :=
-   time.Parse(
-    time.RFC3339,
-    match.Fixture.Date,
-   )
+	for _, match := range data.Response {
 
-  wib :=
-   matchTime.In(
-    time.FixedZone(
-     "WIB",
-     7*3600,
-    ),
-   )
+		matchTime, _ :=
+			time.Parse(
+				time.RFC3339,
+				match.Fixture.Date,
+			)
 
-  message += fmt.Sprintf(
-   "%d. ⚽ %s vs %s\n🕒 %s WIB\n\n",
+		wib :=
+			matchTime.In(
+				time.FixedZone(
+					"WIB",
+					7*3600,
+				),
+			)
 
-   index,
+		message += fmt.Sprintf(
+			"%d. ⚽ %s vs %s\n🕒 %s WIB\n\n",
 
-   match.Teams.Home.Name,
-   match.Teams.Away.Name,
+			index,
 
-   wib.Format("15:04"),
-  )
+			match.Teams.Home.Name,
+			match.Teams.Away.Name,
 
-  matchMap[index] =
-   match.Fixture.ID
+			wib.Format("15:04"),
+		)
 
-  index++
+		matchMap[index] =
+			match.Fixture.ID
 
-  if index > 10 {
-   break
-  }
- }
+		index++
 
- message +=
-  "Reply angka untuk pilih match"
+		if index > 10 {
+			break
+		}
+	}
 
- sendTelegram(message)
+	message +=
+		"Reply angka untuk pilih match"
+
+	sendTelegram(message)
+}
+
+func sendLiveMatches() bool {
+
+	url :=
+		fmt.Sprintf(
+			"%s/fixtures?live=all",
+			baseURL,
+		)
+
+	body, err := apiRequest(url)
+
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
+	var data FixtureResponse
+
+	json.Unmarshal(body, &data)
+
+	if len(data.Response) == 0 {
+		return false
+	}
+
+	message :=
+		"🔥 LIVE NOW\n\n"
+
+	matchMap = map[int]int{}
+
+	index := 1
+
+	for _, match := range data.Response {
+
+		message += fmt.Sprintf(
+			"%d. ⚽ %s %d - %d %s\n⏱ %d'\n\n",
+
+			index,
+
+			match.Teams.Home.Name,
+			match.Goals.Home,
+
+			match.Goals.Away,
+			match.Teams.Away.Name,
+
+			match.Fixture.Status.Elapsed,
+		)
+
+		matchMap[index] =
+			match.Fixture.ID
+
+		index++
+
+		if index > 10 {
+			break
+		}
+	}
+
+	message +=
+		"Reply angka untuk watch"
+
+	sendTelegram(message)
+
+	return true
 }
 
 func getTelegramUpdates() {
 
- token := os.Getenv("BOT_TOKEN")
+	token := os.Getenv("BOT_TOKEN")
 
- url := fmt.Sprintf(
-  "https://api.telegram.org/bot%s/getUpdates",
-  token,
- )
+	url :=
+		fmt.Sprintf(
+			"https://api.telegram.org/bot%s/getUpdates",
+			token,
+		)
 
- resp, err := http.Get(url)
+	resp, err := http.Get(url)
 
- if err != nil {
-  return
- }
+	if err != nil {
+		return
+	}
 
- defer resp.Body.Close()
+	defer resp.Body.Close()
 
- body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
- var result map[string]interface{}
+	var result map[string]interface{}
 
- json.Unmarshal(body, &result)
+	json.Unmarshal(body, &result)
 
- resultsRaw, ok :=
-  result["result"]
+	resultsRaw, ok :=
+		result["result"]
 
- if !ok {
-  return
- }
+	if !ok {
+		return
+	}
 
- results :=
-  resultsRaw.([]interface{})
+	results :=
+		resultsRaw.([]interface{})
 
- if len(results) == 0 {
-  return
- }
+	if len(results) == 0 {
+		return
+	}
 
- last :=
-  results[len(results)-1].(map[string]interface{})
+	last :=
+		results[len(results)-1].(map[string]interface{})
 
- messageRaw, ok :=
-  last["message"]
+	messageRaw, ok :=
+		last["message"]
 
- if !ok {
-  return
- }
+	if !ok {
+		return
+	}
 
- message :=
-  messageRaw.(map[string]interface{})
+	message :=
+		messageRaw.(map[string]interface{})
 
- textRaw, ok :=
-  message["text"]
+	textRaw, ok :=
+		message["text"]
 
- if !ok {
-  return
- }
+	if !ok {
+		return
+	}
 
- text :=
-  textRaw.(string)
- fmt.Println("telegram text:", text)
+	text :=
+		textRaw.(string)
 
- number, err :=
-  strconv.Atoi(
-   strings.TrimSpace(text),
-  )
+	fmt.Println(
+		"telegram text:",
+		text,
+	)
 
- if err != nil {
-  return
- }
+	number, err :=
+		strconv.Atoi(
+			strings.TrimSpace(text),
+		)
 
- matchID :=
-  matchMap[number]
+	if err != nil {
+		return
+	}
 
- if matchID == 0 {
-  return
- }
+	matchID :=
+		matchMap[number]
 
- selectedMatch = matchID
+	if matchID == 0 {
+		return
+	}
 
- lastGoals = 0
+	selectedMatch = matchID
 
- sendTelegram(
-  fmt.Sprintf(
-   "✅ Watching match #%d",
-   number,
-  ),
- )
+	lastGoals = 0
+
+	sendTelegram(
+		fmt.Sprintf(
+			"✅ Watching match #%d",
+			number,
+		),
+	)
 }
 
 func getLiveMatches() int {
 
- url :=
-  fmt.Sprintf(
-   "%s/fixtures?live=all",
-   baseURL,
-  )
+	url :=
+		fmt.Sprintf(
+			"%s/fixtures?live=all",
+			baseURL,
+		)
 
- body, err := apiRequest(url)
+	body, err := apiRequest(url)
 
- if err != nil {
-  log.Println(err)
-  return 0
- }
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
 
- var data FixtureResponse
+	var data FixtureResponse
 
- json.Unmarshal(body, &data)
+	json.Unmarshal(body, &data)
 
- if len(data.Response) == 0 {
-
-  log.Println(
-   "no live match",
-  )
-
-  return 0
- }
-
- return len(data.Response)
+	return len(data.Response)
 }
 
 func watchSelectedMatch() {
 
- if selectedMatch == 0 {
-  return
- }
+	if selectedMatch == 0 {
+		return
+	}
 
- url :=
-  fmt.Sprintf(
-   "%s/fixtures?id=%d",
-   baseURL,
-   selectedMatch,
-  )
+	url :=
+		fmt.Sprintf(
+			"%s/fixtures?id=%d",
+			baseURL,
+			selectedMatch,
+		)
 
- body, err :=
-  apiRequest(url)
+	body, err :=
+		apiRequest(url)
 
- if err != nil {
-  return
- }
+	if err != nil {
+		return
+	}
 
- var data FixtureResponse
- json.Unmarshal(
-  body,
-  &data,
- )
+	var data FixtureResponse
 
- if len(data.Response) == 0 {
-  return
- }
+	json.Unmarshal(
+		body,
+		&data,
+	)
 
- match :=
-  data.Response[0]
+	if len(data.Response) == 0 {
+		return
+	}
 
- totalGoals :=
-  match.Goals.Home +
-   match.Goals.Away
+	match :=
+		data.Response[0]
 
- homePossession := "-"
- awayPossession := "-"
+	totalGoals :=
+		match.Goals.Home +
+			match.Goals.Away
 
- for _, teamStats :=
-  range match.Statistics {
+	homePossession := "-"
+	awayPossession := "-"
 
-  for _, stat :=
-   range teamStats.Statistics {
+	for _, teamStats :=
+		range match.Statistics {
 
-   if stat.Type ==
-    "Ball Possession" {
+		for _, stat :=
+			range teamStats.Statistics {
 
-    if teamStats.Team.Name ==
-     match.Teams.Home.Name {
+			if stat.Type ==
+				"Ball Possession" {
 
-     homePossession =
-      fmt.Sprintf(
-       "%v",
-       stat.Value,
-      )
+				if teamStats.Team.Name ==
+					match.Teams.Home.Name {
 
-    } else {
+					homePossession =
+						fmt.Sprintf(
+							"%v",
+							stat.Value,
+						)
 
-     awayPossession =
-      fmt.Sprintf(
-       "%v",
-       stat.Value,
-      )
-    }
-   }
-  }
- }
+				 } else {
 
- if totalGoals > lastGoals {
+					awayPossession =
+						fmt.Sprintf(
+							"%v",
+							stat.Value,
+						)
+				}
+			}
+		}
+	}
 
-  lastGoals = totalGoals
+	if totalGoals > lastGoals {
 
-  sendTelegram(
-   fmt.Sprintf(
-    "⚽ GOAL!\n\n"+
-     "%s %d - %d %s\n\n"+
-     "⏱ %d'\n\n"+
-     "📊 Possession\n"+
-     "%s vs %s",
+		lastGoals = totalGoals
 
-    match.Teams.Home.Name,
-    match.Goals.Home,
+		sendTelegram(
+			fmt.Sprintf(
+				"⚽ GOAL!\n\n"+
+					"%s %d - %d %s\n\n"+
+					"⏱ %d'\n\n"+
+					"📊 Possession\n"+
+					"%s vs %s",
 
-    match.Goals.Away,
-    match.Teams.Away.Name,
+				match.Teams.Home.Name,
+				match.Goals.Home,
 
-    match.Fixture.Status.Elapsed,
+				match.Goals.Away,
+				match.Teams.Away.Name,
 
-    homePossession,
-    awayPossession,
-   ),
-  )
+				match.Fixture.Status.Elapsed,
 
- } else {
+				homePossession,
+				awayPossession,
+			),
+		)
 
-  sendTelegram(
-   fmt.Sprintf(
-    "📊 LIVE MATCH\n\n"+
-     "%s %d - %d %s\n\n"+
-     "⏱ %d'\n\n"+
-     "📊 Possession\n"+
-     "%s vs %s",
+	} else {
 
-    match.Teams.Home.Name,
-    match.Goals.Home,
+		sendTelegram(
+			fmt.Sprintf(
+				"📊 LIVE MATCH\n\n"+
+					"%s %d - %d %s\n\n"+
+					"⏱ %d'\n\n"+
+					"📊 Possession\n"+
+					"%s vs %s",
 
-    match.Goals.Away,
-    match.Teams.Away.Name,
+				match.Teams.Home.Name,
+				match.Goals.Home,
 
-    match.Fixture.Status.Elapsed,
+				match.Goals.Away,
+				match.Teams.Away.Name,
 
-    homePossession,
-    awayPossession,
-   ),
-  )
- }
+				match.Fixture.Status.Elapsed,
+
+				homePossession,
+				awayPossession,
+			),
+		)
+	}
 }
 
 func main() {
 
- godotenv.Load()
+	godotenv.Load()
 
- sendTelegram(
-  "⚽ Football Bot Started",
- )
+	sendTelegram(
+		"⚽ Football Bot Started",
+	)
 
- sendTodayMatches()
+	// cek live dulu
+	hasLive :=
+		sendLiveMatches()
 
- for {
+	// kalau tidak ada live
+	if !hasLive {
 
-  getTelegramUpdates()
+		sendTodayMatches()
+	}
 
-  liveCount :=
-   getLiveMatches()
+	// telegram polling cepat
+	go func() {
 
-  if liveCount == 0 {
+		for {
 
-   log.Println(
-    "no live match",
-   )
+			getTelegramUpdates()
 
-   time.Sleep(
-    30 * time.Minute,
-   )
+			time.Sleep(
+				10 * time.Second,
+			)
+		}
 
-  } else {
+	}()
 
-   watchSelectedMatch()
+	// football loop
+	for {
 
-   time.Sleep(
-    5 * time.Minute,
-   )
-  }
- }
+		liveCount :=
+			getLiveMatches()
+
+		if liveCount == 0 {
+
+			log.Println(
+				"no live match",
+			)
+
+			time.Sleep(
+				30 * time.Minute,
+			)
+
+		} else {
+
+			watchSelectedMatch()
+
+			time.Sleep(
+				5 * time.Minute,
+			)
+		}
+	}
 }

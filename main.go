@@ -32,7 +32,7 @@ type FixtureResponse struct {
     Short   string `json:"short"`
    } `json:"status"`
 
-   Date string json:"date"
+   Date string `json:"date"`
   } `json:"fixture"`
 
   Teams struct {

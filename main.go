@@ -249,6 +249,7 @@ func getTelegramUpdates() {
 
  text :=
   textRaw.(string)
+ fmt.Println("telegram text:", text)
 
  number, err :=
   strconv.Atoi(

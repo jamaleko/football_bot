@@ -308,13 +308,13 @@ sendTodayMatches()
   if liveCount == 0 {
 
    time.Sleep(
-    5 * time.Minute,
+    30 * time.Minute,
    )
 
   } else {
 
    time.Sleep(
-    15 * time.Second,
+    5 * time.Minute,
    )
   }
  }

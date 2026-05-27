@@ -25,45 +25,45 @@ type FixtureResponse struct {
  Response []struct {
 
   Fixture struct {
-   ID int json:"id"
+   ID int `json:"id"`
 
    Status struct {
-    Elapsed int json:"elapsed"
-    Short   string json:"short"
-   } json:"status"
+    Elapsed int `json:"elapsed"`
+    Short   string `json:"short"`
+   } `json:"status"`
 
    Date string json:"date"
-  } json:"fixture"
+  } `json:"fixture"`
 
   Teams struct {
    Home struct {
-    Name string json:"name"
-   } json:"home"
+    Name string `json:"name"`
+   } `json:"home"`
 
    Away struct {
-    Name string json:"name"
-   } json:"away"
-  } json:"teams"
+    Name string `json:"name"`
+   } `json:"away"`
+  } `json:"teams"`
 
   Goals struct {
-   Home int json:"home"
-   Away int json:"away"
-  } json:"goals"
+   Home int `json:"home"`
+   Away int `json:"away"`
+  } `json:"goals"`
 
   Statistics []struct {
 
    Team struct {
-    Name string json:"name"
-   } json:"team"
+    Name string `json:"name"`
+   } `json:"team"`
 
    Statistics []struct {
-    Type  string      json:"type"
-    Value interface{} json:"value"
-   } json:"statistics"
+    Type  string      `json:"type"`
+    Value interface{} `json:"value"`
+   } `json:"statistics"`
 
-  } json:"statistics"
+  } `json:"statistics"`
 
- } json:"response"
+ } `json:"response"`
 }
 
 func sendTelegram(message string) {

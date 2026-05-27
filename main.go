@@ -215,7 +215,7 @@ func sendUpcomingMatches() {
 
 	index := 1
 
-	for day := 0; day < 30; day++ {
+	for day := 0; day < 365; day++ {
 
 		date :=
 			now.AddDate(

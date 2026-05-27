@@ -194,11 +194,10 @@ func getTelegramUpdates() {
 
  token := os.Getenv("BOT_TOKEN")
 
- url :=
-  fmt.Sprintf(
-   "https://api.telegram.org/bot%s/getUpdates",
-   token,
-  )
+ url := fmt.Sprintf(
+  "https://api.telegram.org/bot%s/getUpdates",
+  token,
+ )
 
  resp, err := http.Get(url)
 
@@ -214,8 +213,15 @@ func getTelegramUpdates() {
 
  json.Unmarshal(body, &result)
 
+ resultsRaw, ok :=
+  result["result"]
+
+ if !ok {
+  return
+ }
+
  results :=
-  result["result"].([]interface{})
+  resultsRaw.([]interface{})
 
  if len(results) == 0 {
   return
@@ -224,11 +230,25 @@ func getTelegramUpdates() {
  last :=
   results[len(results)-1].(map[string]interface{})
 
+ messageRaw, ok :=
+  last["message"]
+
+ if !ok {
+  return
+ }
+
  message :=
-  last["message"].(map[string]interface{})
+  messageRaw.(map[string]interface{})
+
+ textRaw, ok :=
+  message["text"]
+
+ if !ok {
+  return
+ }
 
  text :=
-  message["text"].(string)
+  textRaw.(string)
 
  number, err :=
   strconv.Atoi(

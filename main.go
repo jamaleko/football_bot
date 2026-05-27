@@ -16,32 +16,45 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const (
-	baseURL = "https://v3.football.api-sports.io"
-)
+const baseURL = "https://v3.football.api-sports.io"
 
 var (
 	selectedMatch int
 	isWatching    bool
-	lastGoals     int
 	lastUpdateID  int
+
+	lastGoals  int
+	lastYellow int
+	lastRed    int
+
+	lastHalfTime bool
+	lastFullTime bool
 )
 
-var priorityLeagues = []string{
-	"Premier League",
-	"La Liga",
-	"Serie A",
-	"Bundesliga",
-	"Ligue 1",
+type MatchItem struct {
+	ID    int
+	Title string
+}
 
-	"UEFA Champions League",
-	"UEFA Europa League",
+var currentMatches []MatchItem
 
-	"FIFA World Cup",
-	"UEFA Euro",
-	"Copa America",
+var bigLeagues = map[string]string{
 
-	"Liga 1",
+	"Premier League": "England",
+	"La Liga":        "Spain",
+	"Serie A":        "Italy",
+	"Bundesliga":     "Germany",
+	"Ligue 1":        "France",
+
+	"UEFA Champions League": "World",
+	"UEFA Europa League":    "World",
+	"UEFA Europa Conference League": "World",
+
+	"FIFA World Cup": "World",
+	"UEFA Euro":      "World",
+	"Copa America":   "World",
+
+	"Liga 1": "Indonesia",
 }
 
 type FixtureResponse struct {
@@ -56,7 +69,8 @@ type FixtureResponse struct {
 			ID int `json:"id"`
 
 			Status struct {
-				Elapsed int `json:"elapsed"`
+				Elapsed string `json:"elapsed"`
+				Short   string `json:"short"`
 			} `json:"status"`
 
 			Date string `json:"date"`
@@ -79,10 +93,6 @@ type FixtureResponse struct {
 
 		Statistics []struct {
 
-			Team struct {
-				Name string `json:"name"`
-			} `json:"team"`
-
 			Statistics []struct {
 				Type  string      `json:"type"`
 				Value interface{} `json:"value"`
@@ -101,24 +111,11 @@ type TelegramResponse struct {
 		UpdateID int `json:"update_id"`
 
 		Message struct {
-
 			Text string `json:"text"`
-
-			Chat struct {
-				ID int64 `json:"id"`
-			} `json:"chat"`
-
 		} `json:"message"`
 
 	} `json:"result"`
 }
-
-type MatchItem struct {
-	ID    int
-	Title string
-}
-
-var currentMatches []MatchItem
 
 func sendTelegram(message string) {
 
@@ -147,11 +144,12 @@ func sendTelegram(message string) {
 
 func apiRequest(url string) ([]byte, error) {
 
-	req, _ := http.NewRequest(
-		"GET",
-		url,
-		nil,
-	)
+	req, _ :=
+		http.NewRequest(
+			"GET",
+			url,
+			nil,
+		)
 
 	req.Header.Set(
 		"x-apisports-key",
@@ -171,14 +169,22 @@ func apiRequest(url string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func isPriorityLeague(name string) bool {
+func isBigLeague(
+	league string,
+	country string,
+) bool {
 
-	for _, league := range priorityLeagues {
+	for l, c := range bigLeagues {
 
-		if strings.Contains(
-			strings.ToLower(name),
-			strings.ToLower(league),
-		) {
+		if strings.EqualFold(
+			league,
+			l,
+		) &&
+			strings.EqualFold(
+				country,
+				c,
+			) {
+
 			return true
 		}
 	}
@@ -192,6 +198,7 @@ func sendMenu() {
 		"⚽ FOOTBALL BOT\n\n" +
 			"/startbot\n" +
 			"/random\n" +
+			"/refresh\n" +
 			"/stopbot"
 
 	sendTelegram(message)
@@ -240,8 +247,9 @@ func sendUpcomingMatches() {
 
 		for _, match := range data.Response {
 
-			if !isPriorityLeague(
+			if !isBigLeague(
 				match.League.Name,
+				match.League.Country,
 			) {
 				continue
 			}
@@ -304,7 +312,7 @@ func sendUpcomingMatches() {
 	}
 
 	message +=
-		"\nReply nomor match.\nContoh: 1"
+		"\nReply nomor match"
 
 	sendTelegram(message)
 }
@@ -352,6 +360,8 @@ func watchRandomLiveMatch() {
 		match.Fixture.ID
 
 	lastGoals = 0
+	lastYellow = 0
+	lastRed = 0
 
 	isWatching = true
 
@@ -359,7 +369,7 @@ func watchRandomLiveMatch() {
 		fmt.Sprintf(
 			"🎲 RANDOM MATCH\n\n"+
 				"🌍 %s\n"+
-				"🏆 %s\n"+
+				"🏆 %s\n\n"+
 				"⚽ %s %d - %d %s",
 
 			match.League.Country,
@@ -376,58 +386,18 @@ func watchRandomLiveMatch() {
 	go watchLoop()
 }
 
-func watchLoop() {
+func getStatsText(
+	match FixtureResponse,
+) string {
 
-	for isWatching {
-
-		watchMatch()
-
-		time.Sleep(
-			5 * time.Minute,
-		)
-	}
-}
-
-func watchMatch() {
-
-	if selectedMatch == 0 {
-		return
-	}
-
-	url :=
-		fmt.Sprintf(
-			"%s/fixtures?id=%d",
-			baseURL,
-			selectedMatch,
-		)
-
-	body, err :=
-		apiRequest(url)
-
-	if err != nil {
-		return
-	}
-
-	var data FixtureResponse
-
-	json.Unmarshal(
-		body,
-		&data,
-	)
-
-	if len(data.Response) == 0 {
-		return
-	}
-
-	match :=
-		data.Response[0]
+	m := match.Response[0]
 
 	getStat := func(statType string) (string, string) {
 
 		home := "-"
 		away := "-"
 
-		for i, teamStats := range match.Statistics {
+		for i, teamStats := range m.Statistics {
 
 			for _, stat :=
 				range teamStats.Statistics {
@@ -473,77 +443,243 @@ func watchMatch() {
 	redH, redA :=
 		getStat("Red Cards")
 
+	return fmt.Sprintf(
+
+		"🌍 %s\n"+
+			"🏆 %s\n\n"+
+
+			"⚽ %s %d - %d %s\n\n"+
+
+			"⏱ %s'\n\n"+
+
+			"📊 Possession\n"+
+			"%s vs %s\n\n"+
+
+			"🎯 Shots\n"+
+			"%s vs %s\n\n"+
+
+			"🚩 Corners\n"+
+			"%s vs %s\n\n"+
+
+			"🚷 Offsides\n"+
+			"%s vs %s\n\n"+
+
+			"🤕 Fouls\n"+
+			"%s vs %s\n\n"+
+
+			"🟨 Yellow\n"+
+			"%s vs %s\n\n"+
+
+			"🟥 Red\n"+
+			"%s vs %s",
+
+		m.League.Country,
+		m.League.Name,
+
+		m.Teams.Home.Name,
+		m.Goals.Home,
+
+		m.Goals.Away,
+		m.Teams.Away.Name,
+
+		m.Fixture.Status.Elapsed,
+
+		posH, posA,
+		shotH, shotA,
+		cornerH, cornerA,
+		offH, offA,
+		foulH, foulA,
+		yellowH, yellowA,
+		redH, redA,
+	)
+}
+
+func refreshStats() {
+
+	if selectedMatch == 0 {
+		return
+	}
+
+	url :=
+		fmt.Sprintf(
+			"%s/fixtures?id=%d",
+			baseURL,
+			selectedMatch,
+		)
+
+	body, err :=
+		apiRequest(url)
+
+	if err != nil {
+		return
+	}
+
+	var data FixtureResponse
+
+	json.Unmarshal(
+		body,
+		&data,
+	)
+
+	sendTelegram(
+		getStatsText(data),
+	)
+}
+
+func watchLoop() {
+
+	for isWatching {
+
+		checkEvents()
+
+		time.Sleep(
+			1 * time.Minute,
+		)
+	}
+}
+
+func checkEvents() {
+
+	if selectedMatch == 0 {
+		return
+	}
+
+	url :=
+		fmt.Sprintf(
+			"%s/fixtures?id=%d",
+			baseURL,
+			selectedMatch,
+		)
+
+	body, err :=
+		apiRequest(url)
+
+	if err != nil {
+		return
+	}
+
+	var data FixtureResponse
+
+	json.Unmarshal(
+		body,
+		&data,
+	)
+
+	if len(data.Response) == 0 {
+		return
+	}
+
+	match := data.Response[0]
+
+	getStatInt := func(
+		statType string,
+	) int {
+
+		total := 0
+
+		for _, teamStats :=
+			range match.Statistics {
+
+			for _, stat :=
+				range teamStats.Statistics {
+
+				if stat.Type == statType {
+
+					value :=
+						fmt.Sprintf(
+							"%v",
+							stat.Value,
+						)
+
+					value =
+						strings.ReplaceAll(
+							value,
+							"%",
+							"",
+						)
+
+					n, _ :=
+						strconv.Atoi(
+							value,
+						)
+
+					total += n
+				}
+			}
+		}
+
+		return total
+	}
+
 	totalGoals :=
 		match.Goals.Home +
 			match.Goals.Away
 
-	message :=
-		fmt.Sprintf(
-			"🌍 %s\n"+
-				"🏆 %s\n\n"+
-
-				"⚽ %s %d - %d %s\n\n"+
-
-				"⏱ %d'\n\n"+
-
-				"📊 Possession\n"+
-				"%s vs %s\n\n"+
-
-				"🎯 Shots\n"+
-				"%s vs %s\n\n"+
-
-				"🚩 Corners\n"+
-				"%s vs %s\n\n"+
-
-				"🚷 Offsides\n"+
-				"%s vs %s\n\n"+
-
-				"🤕 Fouls\n"+
-				"%s vs %s\n\n"+
-
-				"🟨 Yellow\n"+
-				"%s vs %s\n\n"+
-
-				"🟥 Red\n"+
-				"%s vs %s",
-
-			match.League.Country,
-			match.League.Name,
-
-			match.Teams.Home.Name,
-			match.Goals.Home,
-
-			match.Goals.Away,
-			match.Teams.Away.Name,
-
-			match.Fixture.Status.Elapsed,
-
-			posH, posA,
-			shotH, shotA,
-			cornerH, cornerA,
-			offH, offA,
-			foulH, foulA,
-			yellowH, yellowA,
-			redH, redA,
+	totalYellow :=
+		getStatInt(
+			"Yellow Cards",
 		)
 
-	fmt.Println(
-		"\n====================",
-	)
+	totalRed :=
+		getStatInt(
+			"Red Cards",
+		)
 
-	fmt.Println(message)
+	status :=
+		match.Fixture.Status.Short
 
 	if totalGoals > lastGoals {
 
 		lastGoals = totalGoals
 
 		sendTelegram(
-			"⚽ GOAL!\n\n" + message,
+			"⚽ GOAL!\n\n" +
+				getStatsText(data),
 		)
+	}
 
-	} else {
+	if totalYellow > lastYellow {
 
-		sendTelegram(message)
+		lastYellow = totalYellow
+
+		sendTelegram(
+			"🟨 YELLOW CARD!\n\n" +
+				getStatsText(data),
+		)
+	}
+
+	if totalRed > lastRed {
+
+		lastRed = totalRed
+
+		sendTelegram(
+			"🟥 RED CARD!\n\n" +
+				getStatsText(data),
+		)
+	}
+
+	if status == "HT" &&
+		!lastHalfTime {
+
+		lastHalfTime = true
+
+		sendTelegram(
+			"⏸ HALF TIME\n\n" +
+				getStatsText(data),
+		)
+	}
+
+	if status == "FT" &&
+		!lastFullTime {
+
+		lastFullTime = true
+
+		isWatching = false
+
+		sendTelegram(
+			"✅ FULL TIME\n\n" +
+				getStatsText(data),
+		)
 	}
 }
 
@@ -609,6 +745,10 @@ func getTelegramUpdates() {
 
 				watchRandomLiveMatch()
 
+			case text == "/refresh":
+
+				refreshStats()
+
 			case text == "/stopbot":
 
 				isWatching = false
@@ -641,12 +781,18 @@ func getTelegramUpdates() {
 					currentMatches[number-1].ID
 
 				lastGoals = 0
+				lastYellow = 0
+				lastRed = 0
+
+				lastHalfTime = false
+				lastFullTime = false
 
 				isWatching = true
 
 				sendTelegram(
 					"👀 Watching\n\n" +
-						currentMatches[number-1].Title,
+						currentMatches[number-1].Title +
+						"\n\nGunakan /refresh untuk statistik",
 				)
 
 				go watchLoop()

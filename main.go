@@ -14,7 +14,7 @@ import (
 
 	"github.com/joho/godotenv"
 )
-
+var lastUpdateID = 0
 const (
 	baseURL = "https://v3.football.api-sports.io"
 )
@@ -255,99 +255,108 @@ func sendLiveMatches() bool {
 
 	return true
 }
-
 func getTelegramUpdates() {
 
-	token := os.Getenv("BOT_TOKEN")
+ token := os.Getenv("BOT_TOKEN")
 
-	url :=
-		fmt.Sprintf(
-			"https://api.telegram.org/bot%s/getUpdates",
-			token,
-		)
+ url := fmt.Sprintf(
+  "https://api.telegram.org/bot%s/getUpdates?offset=%d",
+  token,
+  lastUpdateID+1,
+ )
 
-	resp, err := http.Get(url)
+ resp, err := http.Get(url)
 
-	if err != nil {
-		return
-	}
+ if err != nil {
+  return
+ }
 
-	defer resp.Body.Close()
+ defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+ body, _ := io.ReadAll(resp.Body)
 
-	var result map[string]interface{}
+ var result map[string]interface{}
 
-	json.Unmarshal(body, &result)
+ json.Unmarshal(body, &result)
 
-	resultsRaw, ok :=
-		result["result"]
+ resultsRaw, ok :=
+  result["result"]
 
-	if !ok {
-		return
-	}
+ if !ok {
+  return
+ }
 
-	results :=
-		resultsRaw.([]interface{})
+ results :=
+  resultsRaw.([]interface{})
 
-	if len(results) == 0 {
-		return
-	}
+ if len(results) == 0 {
+  return
+ }
 
-	last :=
-		results[len(results)-1].(map[string]interface{})
+ for _, item := range results {
 
-	messageRaw, ok :=
-		last["message"]
+  update :=
+   item.(map[string]interface{})
 
-	if !ok {
-		return
-	}
+  updateID :=
+   int(
+    update["update_id"].(float64),
+   )
 
-	message :=
-		messageRaw.(map[string]interface{})
+  lastUpdateID = updateID
 
-	textRaw, ok :=
-		message["text"]
+  messageRaw, ok :=
+   update["message"]
 
-	if !ok {
-		return
-	}
+  if !ok {
+   continue
+  }
 
-	text :=
-		textRaw.(string)
+  message :=
+   messageRaw.(map[string]interface{})
 
-	fmt.Println(
-		"telegram text:",
-		text,
-	)
+  textRaw, ok :=
+   message["text"]
 
-	number, err :=
-		strconv.Atoi(
-			strings.TrimSpace(text),
-		)
+  if !ok {
+   continue
+  }
 
-	if err != nil {
-		return
-	}
+  text :=
+   textRaw.(string)
 
-	matchID :=
-		matchMap[number]
+  fmt.Println(
+   "telegram text:",
+   text,
+  )
 
-	if matchID == 0 {
-		return
-	}
+  number, err :=
+   strconv.Atoi(
+    strings.TrimSpace(text),
+   )
 
-	selectedMatch = matchID
+  if err != nil {
+   continue
+  }
 
-	lastGoals = 0
+  matchID :=
+   matchMap[number]
 
-	sendTelegram(
-		fmt.Sprintf(
-			"✅ Watching match #%d",
-			number,
-		),
-	)
+  if matchID == 0 {
+   continue
+  }
+
+  selectedMatch = matchID
+
+  lastGoals = 0
+
+  sendTelegram(
+   fmt.Sprintf(
+    "✅ Watching match #%d",
+    number,
+   ),
+  )
+ }
 }
 
 func getLiveMatches() int {

@@ -520,11 +520,53 @@ func watchSelectedMatch() {
 		)
 	}
 }
+func clearOldUpdates() {
 
+ token := os.Getenv("BOT_TOKEN")
+
+ url := fmt.Sprintf(
+  "https://api.telegram.org/bot%s/getUpdates",
+  token,
+ )
+
+ resp, err := http.Get(url)
+
+ if err != nil {
+  return
+ }
+
+ defer resp.Body.Close()
+
+ body, _ := io.ReadAll(resp.Body)
+
+ var result map[string]interface{}
+
+ json.Unmarshal(body, &result)
+
+ results :=
+  result["result"].([]interface{})
+
+ if len(results) == 0 {
+  return
+ }
+
+ last :=
+  results[len(results)-1].(map[string]interface{})
+
+ lastUpdateID =
+  int(
+   last["update_id"].(float64),
+  )
+
+ fmt.Println(
+  "last update reset:",
+  lastUpdateID,
+ )
+}
 func main() {
 
 	godotenv.Load()
-
+	clearOldUpdates()
 	sendTelegram(
 		"⚽ Football Bot Started",
 	)

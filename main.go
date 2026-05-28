@@ -18,6 +18,10 @@ const BOT_TOKEN = "8727181698:AAGAehZUWyQmh7CBiWNt_x6Xsevh2hrcuCE"
 var TELEGRAM_API =
 	"https://api.telegram.org/bot" + BOT_TOKEN
 
+// =========================
+// STRUCT
+// =========================
+
 type TelegramResponse struct {
 	Ok     bool `json:"ok"`
 	Result []struct {
@@ -51,6 +55,10 @@ type SportsDBResponse struct {
 		IntAwayScore string `json:"intAwayScore"`
 
 		StrStatus string `json:"strStatus"`
+
+		DateEvent string `json:"dateEvent"`
+
+		StrTime string `json:"strTime"`
 	} `json:"events"`
 }
 
@@ -67,12 +75,19 @@ type Match struct {
 	AwayScore int
 
 	Status string
+
+	Date string
+	Time string
 }
 
 type UserSession struct {
 	Watching bool
 	Index int
 }
+
+// =========================
+// GLOBAL
+// =========================
 
 var (
 	lastUpdateID = 0
@@ -82,6 +97,23 @@ var (
 	userSessions =
 		map[int64]*UserSession{}
 )
+
+// BIG LEAGUES
+var bigLeagues = []string{
+	"4328", // EPL
+	"4335", // La Liga
+	"4331", // Bundesliga
+	"4332", // Serie A
+	"4334", // Ligue 1
+	"4480", // UCL
+	"4481", // Europa
+	"4482", // Conference
+	"4346", // MLS
+}
+
+// =========================
+// MAIN
+// =========================
 
 func main() {
 
@@ -100,6 +132,10 @@ func main() {
 		)
 	}
 }
+
+// =========================
+// TELEGRAM
+// =========================
 
 func getUpdates() {
 
@@ -218,6 +254,10 @@ func handleCommand(
 	}
 }
 
+// =========================
+// KEYBOARD
+// =========================
+
 func mainKeyboard() map[string]interface{} {
 
 	return map[string]interface{}{
@@ -272,6 +312,10 @@ STOP`
 	)
 }
 
+// =========================
+// LIVE MATCH
+// =========================
+
 func fetchLiveMatches() []Match {
 
 	now :=
@@ -307,6 +351,10 @@ func fetchLiveMatches() []Match {
 	var matches []Match
 
 	for _, e := range result.Events {
+
+		if e.StrStatus == "FT" {
+			continue
+		}
 
 		if e.IntHomeScore == "" &&
 			e.IntAwayScore == "" {
@@ -444,6 +492,149 @@ func sendLiveMatches(
 		nil,
 	)
 }
+
+// =========================
+// BIG MATCH
+// =========================
+
+func fetchBigMatches() []Match {
+
+	var matches []Match
+
+	for _, leagueID := range bigLeagues {
+
+		link :=
+			fmt.Sprintf(
+				"https://www.thesportsdb.com/api/v1/json/123/eventsnextleague.php?id=%s",
+				leagueID,
+			)
+
+		resp, err :=
+			http.Get(link)
+
+		if err != nil {
+			continue
+		}
+
+		body, _ :=
+			io.ReadAll(resp.Body)
+
+		resp.Body.Close()
+
+		var result SportsDBResponse
+
+		json.Unmarshal(
+			body,
+			&result,
+		)
+
+		for _, e := range result.Events {
+
+			id := 0
+
+			fmt.Sscanf(
+				e.IDEvent,
+				"%d",
+				&id,
+			)
+
+			match :=
+				Match{
+
+					ID: id,
+
+					Country:
+						e.StrCountry,
+
+					League:
+						e.StrLeague,
+
+					Home:
+						e.StrHomeTeam,
+
+					Away:
+						e.StrAwayTeam,
+
+					Date:
+						e.DateEvent,
+
+					Time:
+						e.StrTime,
+				}
+
+			matches =
+				append(
+					matches,
+					match,
+				)
+		}
+	}
+
+	return matches
+}
+
+func sendBigMatches(
+	chatID int64,
+) {
+
+	matches :=
+		fetchBigMatches()
+
+	if len(matches) == 0 {
+
+		sendTelegram(
+			chatID,
+			"❌ Tidak ada big match",
+			nil,
+		)
+
+		return
+	}
+
+	var msg strings.Builder
+
+	msg.WriteString(
+		"🔥 BIG MATCHES\n\n",
+	)
+
+	limit := 10
+
+	if len(matches) < limit {
+		limit = len(matches)
+	}
+
+	for i := 0; i < limit; i++ {
+
+		m := matches[i]
+
+		msg.WriteString(
+			fmt.Sprintf(
+				"%d. 🌍 %s\n🏆 %s\n⚽ %s vs %s\n🕒 %s %s\n\n",
+
+				i+1,
+
+				m.Country,
+				m.League,
+
+				m.Home,
+				m.Away,
+
+				m.Date,
+				m.Time,
+			),
+		)
+	}
+
+	sendTelegram(
+		chatID,
+		msg.String(),
+		nil,
+	)
+}
+
+// =========================
+// WATCH
+// =========================
 
 func watchByNumber(
 	chatID int64,
@@ -609,16 +800,9 @@ func sendMatchDetail(
 	)
 }
 
-func sendBigMatches(
-	chatID int64,
-) {
-
-	sendTelegram(
-		chatID,
-		"🔥 BIG MATCH COMING SOON",
-		nil,
-	)
-}
+// =========================
+// SEND TELEGRAM
+// =========================
 
 func sendTelegram(
 	chatID int64,

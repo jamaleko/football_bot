@@ -477,7 +477,8 @@ func sendLiveMatches(
   if len(m.Time) >= 5 {
 
    status =
-    "🕒 " + m.Time[:5] + " WIB"
+ "📅 " + m.Date +
+ "\n🕒 " + m.Time[:5] + " WIB"
 
   } else {
 

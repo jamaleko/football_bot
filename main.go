@@ -478,11 +478,7 @@ func watchRandom(
 	}
 
 	random :=
-		matches[
-			rand.Intn(
-				len(matches),
-			)
-		]
+		matches[rand.Intn(len(matches))]
 
 	userSessions[chatID] =
 		&UserSession{

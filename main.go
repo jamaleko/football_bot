@@ -5,168 +5,231 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 const (
-	baseURL = "https://www.thesportsdb.com/api/v1/json/3"
+	BOT_TOKEN = "8727181698:AAGAehZUWyQmh7CBiWNt_x6Xsevh2hrcuCE"
 )
 
-type UserSession struct {
-	SelectedEvent string
-	IsWatching    bool
-	LastHomeScore int
-	LastAwayScore int
-}
-
-type MatchItem struct {
-	ID    string
-	Title string
-}
-
-var (
-	lastUpdateID int
-
-	userSessions = map[int64]*UserSession{}
-	userMatches  = map[int64][]MatchItem{}
-)
-
-var bigLeagueIDs = []string{
-	"4328", // EPL
-	"4335", // Bundesliga
-	"4331", // Serie A
-	"4332", // La Liga
-	"4334", // Ligue 1
-	"4480", // UCL
-}
-
-type LiveResponse struct {
-	Event []struct {
-
-		IDEvent string `json:"idEvent"`
-
-		StrLeague string `json:"strLeague"`
-
-		StrHomeTeam string `json:"strHomeTeam"`
-		StrAwayTeam string `json:"strAwayTeam"`
-
-		IntHomeScore string `json:"intHomeScore"`
-		IntAwayScore string `json:"intAwayScore"`
-
-		StrProgress string `json:"strProgress"`
-
-		StrStatus string `json:"strStatus"`
-
-		StrCountry string `json:"strCountry"`
-
-	} `json:"event"`
-}
-
-type EventResponse struct {
-	Events []struct {
-
-		IDEvent string `json:"idEvent"`
-
-		StrLeague string `json:"strLeague"`
-
-		StrHomeTeam string `json:"strHomeTeam"`
-		StrAwayTeam string `json:"strAwayTeam"`
-
-		IntHomeScore string `json:"intHomeScore"`
-		IntAwayScore string `json:"intAwayScore"`
-
-		StrProgress string `json:"strProgress"`
-
-		StrCountry string `json:"strCountry"`
-
-		StrTimestamp string `json:"strTimestamp"`
-
-		StrStatus string `json:"strStatus"`
-
-		StrHomeGoalDetails string `json:"strHomeGoalDetails"`
-		StrAwayGoalDetails string `json:"strAwayGoalDetails"`
-
-		StrHomeYellowCards string `json:"strHomeYellowCards"`
-		StrAwayYellowCards string `json:"strAwayYellowCards"`
-
-		StrHomeRedCards string `json:"strHomeRedCards"`
-		StrAwayRedCards string `json:"strAwayRedCards"`
-
-	} `json:"events"`
-}
+var TELEGRAM_API =
+	"https://api.telegram.org/bot" + BOT_TOKEN
 
 type TelegramResponse struct {
+	Ok     bool `json:"ok"`
 	Result []struct {
-
 		UpdateID int `json:"update_id"`
 
 		Message struct {
-
 			Text string `json:"text"`
 
 			Chat struct {
 				ID int64 `json:"id"`
 			} `json:"chat"`
-
 		} `json:"message"`
-
 	} `json:"result"`
 }
 
-func apiRequest(
-	url string,
-) ([]byte, error) {
+type SofaLiveResponse struct {
+	Events []Event `json:"events"`
+}
+
+type Event struct {
+	ID     int `json:"id"`
+	Status struct {
+		Description string `json:"description"`
+		Type        string `json:"type"`
+	} `json:"status"`
+
+	Tournament struct {
+		Name string `json:"name"`
+
+		Category struct {
+			Name string `json:"name"`
+		} `json:"category"`
+	} `json:"tournament"`
+
+	HomeTeam struct {
+		Name string `json:"name"`
+	} `json:"homeTeam"`
+
+	AwayTeam struct {
+		Name string `json:"name"`
+	} `json:"awayTeam"`
+
+	HomeScore struct {
+		Current int `json:"current"`
+	} `json:"homeScore"`
+
+	AwayScore struct {
+		Current int `json:"current"`
+	} `json:"awayScore"`
+}
+
+type IncidentResponse struct {
+	Incidents []Incident `json:"incidents"`
+}
+
+type Incident struct {
+	Time int    `json:"time"`
+	Type string `json:"incidentType"`
+
+	Player struct {
+		Name string `json:"name"`
+	} `json:"player"`
+
+	ScoringTeam string `json:"scoringTeam"`
+}
+
+type UserSession struct {
+	Watching bool
+	MatchID  int
+}
+
+var userSessions =
+	map[int64]*UserSession{}
+
+var lastUpdateID = 0
+
+func main() {
+
+	rand.Seed(time.Now().UnixNano())
+
+	fmt.Println("⚽ SofaScore Bot Started")
+
+	for {
+
+		getUpdates()
+
+		time.Sleep(2 * time.Second)
+	}
+}
+
+func getUpdates() {
+
+	endpoint :=
+		fmt.Sprintf(
+			"%s/getUpdates?timeout=30&offset=%d",
+			TELEGRAM_API,
+			lastUpdateID+1,
+		)
 
 	resp, err :=
-		http.Get(url)
+		http.Get(endpoint)
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	defer resp.Body.Close()
 
-	return io.ReadAll(resp.Body)
+	body, _ :=
+		io.ReadAll(resp.Body)
+
+	var result TelegramResponse
+
+	json.Unmarshal(body, &result)
+
+	for _, update := range result.Result {
+
+		lastUpdateID = update.UpdateID
+
+		text :=
+			strings.TrimSpace(
+				update.Message.Text,
+			)
+
+		chatID :=
+			update.Message.Chat.ID
+
+		handleCommand(
+			chatID,
+			text,
+		)
+	}
 }
 
-func sendTelegram(
+func handleCommand(
 	chatID int64,
 	text string,
-	keyboard interface{},
 ) {
 
-	token := os.Getenv("BOT_TOKEN")
+	text =
+		strings.ToUpper(text)
 
-	url :=
-		fmt.Sprintf(
-			"https://api.telegram.org/bot%s/sendMessage",
-			token,
+	switch {
+
+	case text == "/START":
+
+		sendMainMenu(chatID)
+
+	case text == "/LIVE" || text == "LIVE":
+
+		sendLiveMatches(chatID)
+
+	case text == "/BIG" || text == "BIG":
+
+		sendBigMatches(chatID)
+
+	case text == "/RANDOM" || text == "RANDOM":
+
+		watchRandom(chatID)
+
+	case text == "/REFRESH" || text == "REFRESH":
+
+		refreshMatch(chatID)
+
+	case text == "/STOP" || text == "STOP":
+
+		stopWatch(chatID)
+
+	case strings.HasPrefix(
+		text,
+		"/WATCH",
+	):
+
+		parts :=
+			strings.Split(text, " ")
+
+		if len(parts) < 2 {
+			return
+		}
+
+		number, err :=
+			strconv.Atoi(parts[1])
+
+		if err != nil {
+			return
+		}
+
+		watchByNumber(
+			chatID,
+			number,
 		)
-
-	payload := map[string]interface{}{
-		"chat_id": chatID,
-		"text":    text,
 	}
+}
 
-	if keyboard != nil {
-		payload["reply_markup"] = keyboard
-	}
+func sendMainMenu(chatID int64) {
 
-	body, _ :=
-		json.Marshal(payload)
+	msg :=
+		`⚽ FOOTBALL BOT
 
-	http.Post(
-		url,
-		"application/json",
-		bytes.NewBuffer(body),
+/LIVE
+/BIG
+/RANDOM
+/REFRESH
+/STOP`
+
+	sendTelegram(
+		chatID,
+		msg,
+		mainKeyboard(),
 	)
 }
 
@@ -177,74 +240,81 @@ func mainKeyboard() map[string]interface{} {
 
 			{
 				{
-					"text": "LIVE",
+					"text": "/LIVE",
 				},
 				{
-					"text": "BIG",
-				},
-			},
-
-			{
-				{
-					"text": "RANDOM",
-				},
-				{
-					"text": "REFRESH",
+					"text": "/BIG",
 				},
 			},
 
 			{
 				{
-					"text": "STOP",
+					"text": "/RANDOM",
+				},
+				{
+					"text": "/REFRESH",
+				},
+			},
+
+			{
+				{
+					"text": "/STOP",
 				},
 			},
 		},
 
 		"resize_keyboard": true,
-		"is_persistent":  true,
 	}
 }
 
-func sendMainMenu(
-	chatID int64,
-) {
+var cachedMatches []Event
 
-	sendTelegram(
-		chatID,
-
-		"⚽ FOOTBALL BOT\n\n"+
-			"LIVE = live match\n"+
-			"BIG = big upcoming match\n"+
-			"RANDOM = random live match\n"+
-			"REFRESH = refresh stats\n"+
-			"STOP = stop watching",
-
-		mainKeyboard(),
-	)
-}
-
-func sendLiveMatches(
-	chatID int64,
-) {
-
-	userMatches[chatID] = nil
+func fetchLiveMatches() []Event {
 
 	url :=
-		baseURL +
-			"/livescore.php?s=Soccer"
+		"https://www.sofascore.com/api/v1/sport/football/events/live"
 
-	body, err :=
-		apiRequest(url)
+	req, _ :=
+		http.NewRequest(
+			"GET",
+			url,
+			nil,
+		)
+
+	req.Header.Set(
+		"User-Agent",
+		"Mozilla/5.0",
+	)
+
+	client := &http.Client{}
+
+	resp, err :=
+		client.Do(req)
 
 	if err != nil {
-		return
+		return nil
 	}
 
-	var data LiveResponse
+	defer resp.Body.Close()
 
-	json.Unmarshal(body, &data)
+	body, _ :=
+		io.ReadAll(resp.Body)
 
-	if len(data.Event) == 0 {
+	var result SofaLiveResponse
+
+	json.Unmarshal(body, &result)
+
+	return result.Events
+}
+
+func sendLiveMatches(chatID int64) {
+
+	matches :=
+		fetchLiveMatches()
+
+	cachedMatches = matches
+
+	if len(matches) == 0 {
 
 		sendTelegram(
 			chatID,
@@ -255,99 +325,90 @@ func sendLiveMatches(
 		return
 	}
 
-	text :=
-		"🔥 LIVE MATCHES\n\n"
+	var msg strings.Builder
 
-	index := 1
+	msg.WriteString(
+		"🔥 LIVE MATCHES\n\n",
+	)
 
-	for _, match :=
-		range data.Event {
+	limit := 10
 
-		text += fmt.Sprintf(
-
-			"%d. 🌍 %s\n"+
-				"🏆 %s\n"+
-				"⚽ %s %s - %s %s\n"+
-				"⏱ %s\n\n",
-
-			index,
-
-			match.StrCountry,
-			match.StrLeague,
-
-			match.StrHomeTeam,
-			match.IntHomeScore,
-
-			match.IntAwayScore,
-			match.StrAwayTeam,
-
-			match.StrProgress,
-		)
-
-		userMatches[chatID] =
-			append(
-				userMatches[chatID],
-				MatchItem{
-					ID: match.IDEvent,
-				},
-			)
-
-		index++
-
-		if index > 10 {
-			break
-		}
+	if len(matches) < limit {
+		limit = len(matches)
 	}
 
-	text +=
-		"Watch match:\n"+
-			"WATCH 1"
+	for i := 0; i < limit; i++ {
+
+		m := matches[i]
+
+		msg.WriteString(
+			fmt.Sprintf(
+				"%d. 🌍 %s\n🏆 %s\n⚽ %s %d - %d %s\n⏱ %s\n\n",
+				i+1,
+				m.Tournament.Category.Name,
+				m.Tournament.Name,
+				m.HomeTeam.Name,
+				m.HomeScore.Current,
+				m.AwayScore.Current,
+				m.AwayTeam.Name,
+				m.Status.Description,
+			),
+		)
+	}
+
+	msg.WriteString(
+		"Reply:\n/WATCH 1",
+	)
 
 	sendTelegram(
 		chatID,
-		text,
+		msg.String(),
 		nil,
 	)
 }
 
-func sendBigMatches(
+func watchByNumber(
 	chatID int64,
+	number int,
 ) {
 
-	text :=
-		"📅 BIG LEAGUES\n\n"
+	if number <= 0 ||
+		number > len(cachedMatches) {
 
-	text +=
-		"Premier League\n"+
-			"Serie A\n"+
-			"La Liga\n"+
-			"Bundesliga\n"+
-			"Ligue 1\n"+
-			"Champions League\n\n"
+		sendTelegram(
+			chatID,
+			"❌ Match tidak ditemukan",
+			nil,
+		)
 
-	text +=
-		"Gunakan:\n"+
-			"LIVE"
+		return
+	}
 
-	sendTelegram(
+	match :=
+		cachedMatches[number-1]
+
+	userSessions[chatID] =
+		&UserSession{
+			Watching: true,
+			MatchID:  match.ID,
+		}
+
+	sendMatchDetail(
 		chatID,
-		text,
-		nil,
+		match.ID,
 	)
 }
 
-func watchRandomMatch(
-	chatID int64,
-) {
+func watchRandom(chatID int64) {
 
 	matches :=
-		userMatches[chatID]
+		fetchLiveMatches()
 
 	if len(matches) == 0 {
 
 		sendTelegram(
 			chatID,
-			"❌ Jalankan LIVE dulu",
+			"❌ Tidak ada live match",
 			nil,
 		)
 
@@ -355,34 +416,25 @@ func watchRandomMatch(
 	}
 
 	random :=
-		matches[rand.Intn(len(matches))]
+		matches[
+			rand.Intn(
+				len(matches),
+			)
+		]
 
-	watchMatch(
+	userSessions[chatID] =
+		&UserSession{
+			Watching: true,
+			MatchID:  random.ID,
+		}
+
+	sendMatchDetail(
 		chatID,
 		random.ID,
 	)
 }
 
-func watchMatch(
-	chatID int64,
-	eventID string,
-) {
-
-	session :=
-		&UserSession{
-			SelectedEvent: eventID,
-			IsWatching:    true,
-		}
-
-	userSessions[chatID] =
-		session
-
-	refreshStats(chatID)
-}
-
-func refreshStats(
-	chatID int64,
-) {
+func refreshMatch(chatID int64) {
 
 	session :=
 		userSessions[chatID]
@@ -391,297 +443,248 @@ func refreshStats(
 
 		sendTelegram(
 			chatID,
-			"❌ Tidak ada match",
+			"❌ Tidak sedang watch",
 			nil,
 		)
 
 		return
 	}
 
-	url :=
-		fmt.Sprintf(
-			"%s/lookupevent.php?id=%s",
-			baseURL,
-			session.SelectedEvent,
-		)
+	sendMatchDetail(
+		chatID,
+		session.MatchID,
+	)
+}
 
-	body, err :=
-		apiRequest(url)
+func stopWatch(chatID int64) {
 
-	if err != nil {
-		return
-	}
-
-	var data EventResponse
-
-	json.Unmarshal(body, &data)
-
-	if len(data.Events) == 0 {
-
-		sendTelegram(
-			chatID,
-			"❌ Event tidak ditemukan",
-			nil,
-		)
-
-		return
-	}
-
-	match := data.Events[0]
-
-	goals :=
-		formatGoals(
-			match.StrHomeGoalDetails,
-			match.StrAwayGoalDetails,
-		)
-
-	yellows :=
-		formatCards(
-			match.StrHomeYellowCards,
-			match.StrAwayYellowCards,
-		)
-
-	reds :=
-		formatCards(
-			match.StrHomeRedCards,
-			match.StrAwayRedCards,
-		)
-
-	text := fmt.Sprintf(
-
-		"🌍 %s\n"+
-			"🏆 %s\n\n"+
-
-			"⚽ %s %s - %s %s\n\n"+
-
-			"⏱ %s\n\n"+
-
-			"⚽ Goal:\n%s\n\n"+
-
-			"🟨 Yellow:\n%s\n\n"+
-
-			"🟥 Red:\n%s",
-
-		match.StrCountry,
-		match.StrLeague,
-
-		match.StrHomeTeam,
-		match.IntHomeScore,
-
-		match.IntAwayScore,
-		match.StrAwayTeam,
-
-		match.StrProgress,
-
-		goals,
-		yellows,
-		reds,
+	delete(
+		userSessions,
+		chatID,
 	)
 
 	sendTelegram(
 		chatID,
-		text,
+		"🛑 Watch stopped",
 		nil,
 	)
 }
 
-func formatGoals(
-	home string,
-	away string,
-) string {
+func sendMatchDetail(
+	chatID int64,
+	matchID int,
+) {
 
-	result := ""
+	match :=
+		findMatch(matchID)
 
-	if home != "" {
-		result += home + "\n"
-	}
+	if match == nil {
 
-	if away != "" {
-		result += away
-	}
-
-	if result == "" {
-		result = "-"
-	}
-
-	return result
-}
-
-func formatCards(
-	home string,
-	away string,
-) string {
-
-	result := ""
-
-	if home != "" {
-		result += home + "\n"
-	}
-
-	if away != "" {
-		result += away
-	}
-
-	if result == "" {
-		result = "-"
-	}
-
-	return result
-}
-
-func getTelegramUpdates() {
-
-	token := os.Getenv("BOT_TOKEN")
-
-	for {
-
-		url := fmt.Sprintf(
-			"https://api.telegram.org/bot%s/getUpdates?offset=%d",
-			token,
-			lastUpdateID+1,
+		sendTelegram(
+			chatID,
+			"❌ Match selesai",
+			nil,
 		)
 
-		resp, err :=
-			http.Get(url)
+		return
+	}
 
-		if err != nil {
+	incidents :=
+		fetchIncidents(matchID)
 
-			time.Sleep(
-				3 * time.Second,
-			)
+	goals := []string{}
+	yellows := []string{}
+	reds := []string{}
 
-			continue
+	for _, i := range incidents {
+
+		switch i.Type {
+
+		case "goal":
+
+			goals =
+				append(
+					goals,
+					fmt.Sprintf(
+						"%s %d'",
+						i.Player.Name,
+						i.Time,
+					),
+				)
+
+		case "yellowCard":
+
+			yellows =
+				append(
+					yellows,
+					i.Player.Name,
+				)
+
+		case "redCard":
+
+			reds =
+				append(
+					reds,
+					i.Player.Name,
+				)
 		}
-
-		body, _ :=
-			io.ReadAll(resp.Body)
-
-		resp.Body.Close()
-
-		var data TelegramResponse
-
-		json.Unmarshal(
-			body,
-			&data,
-		)
-
-		for _, update :=
-			range data.Result {
-
-			lastUpdateID =
-				update.UpdateID
-
-			if update.Message.Text != "" {
-
-				chatID :=
-					update.Message.Chat.ID
-
-				text :=
-					strings.TrimSpace(
-						strings.ToUpper(
-							update.Message.Text,
-						),
-					)
-
-				switch {
-
-				case text == "/START":
-
-					sendMainMenu(chatID)
-
-				case text == "LIVE":
-
-					sendLiveMatches(chatID)
-
-				case text == "BIG":
-
-					sendBigMatches(chatID)
-
-				case text == "RANDOM":
-
-					watchRandomMatch(chatID)
-
-				case text == "REFRESH":
-
-					refreshStats(chatID)
-
-				case text == "STOP":
-
-					session :=
-						userSessions[chatID]
-
-					if session != nil {
-
-						session.IsWatching =
-							false
-					}
-
-					sendTelegram(
-						chatID,
-						"🛑 Watch stopped",
-						nil,
-					)
-
-				case strings.HasPrefix(
-					text,
-					"WATCH ",
-				):
-
-					indexText :=
-						strings.TrimPrefix(
-							text,
-							"WATCH ",
-						)
-
-					index, err :=
-						strconv.Atoi(
-							indexText,
-						)
-
-					if err != nil {
-						continue
-					}
-
-					matches :=
-						userMatches[chatID]
-
-					if index < 1 ||
-						index > len(matches) {
-
-						sendTelegram(
-							chatID,
-							"❌ Match tidak valid",
-							nil,
-						)
-
-						continue
-					}
-
-					watchMatch(
-						chatID,
-						matches[index-1].ID,
-					)
-				}
-			}
-		}
-
-		time.Sleep(
-			2 * time.Second,
-		)
 	}
+
+	if len(goals) == 0 {
+		goals = append(goals, "-")
+	}
+
+	if len(yellows) == 0 {
+		yellows = append(yellows, "-")
+	}
+
+	if len(reds) == 0 {
+		reds = append(reds, "-")
+	}
+
+	msg :=
+		fmt.Sprintf(
+			`🌍 %s
+🏆 %s
+
+⚽ %s %d - %d %s
+
+⏱ %s
+
+⚽ Goal:
+%s
+
+🟨 Yellow:
+%s
+
+🟥 Red:
+%s`,
+			match.Tournament.Category.Name,
+			match.Tournament.Name,
+
+			match.HomeTeam.Name,
+			match.HomeScore.Current,
+			match.AwayScore.Current,
+			match.AwayTeam.Name,
+
+			match.Status.Description,
+
+			strings.Join(goals, "\n"),
+			strings.Join(yellows, "\n"),
+			strings.Join(reds, "\n"),
+		)
+
+	sendTelegram(
+		chatID,
+		msg,
+		nil,
+	)
 }
 
-func main() {
+func fetchIncidents(
+	matchID int,
+) []Incident {
 
-	rand.Seed(
-		time.Now().UnixNano(),
+	url :=
+		fmt.Sprintf(
+			"https://www.sofascore.com/api/v1/event/%d/incidents",
+			matchID,
+		)
+
+	req, _ :=
+		http.NewRequest(
+			"GET",
+			url,
+			nil,
+		)
+
+	req.Header.Set(
+		"User-Agent",
+		"Mozilla/5.0",
 	)
 
-	godotenv.Load()
+	client := &http.Client{}
 
-	log.Println(
-		"Football bot running...",
+	resp, err :=
+		client.Do(req)
+
+	if err != nil {
+		return nil
+	}
+
+	defer resp.Body.Close()
+
+	body, _ :=
+		io.ReadAll(resp.Body)
+
+	var result IncidentResponse
+
+	json.Unmarshal(body, &result)
+
+	return result.Incidents
+}
+
+func findMatch(
+	matchID int,
+) *Event {
+
+	matches :=
+		fetchLiveMatches()
+
+	for _, m := range matches {
+
+		if m.ID == matchID {
+			return &m
+		}
+	}
+
+	return nil
+}
+
+func sendBigMatches(chatID int64) {
+
+	sendTelegram(
+		chatID,
+		"🔥 BIG MATCH coming soon",
+		nil,
+	)
+}
+
+func sendTelegram(
+	chatID int64,
+	text string,
+	keyboard interface{},
+) {
+
+	data :=
+		url.Values{}
+
+	data.Set(
+		"chat_id",
+		fmt.Sprintf("%d", chatID),
 	)
 
-	getTelegramUpdates()
+	data.Set(
+		"text",
+		text,
+	)
+
+	if keyboard != nil {
+
+		kb, _ :=
+			json.Marshal(keyboard)
+
+		data.Set(
+			"reply_markup",
+			string(kb),
+		)
+	}
+
+	http.Post(
+		TELEGRAM_API+"/sendMessage",
+		"application/x-www-form-urlencoded",
+		bytes.NewBufferString(
+			data.Encode(),
+		),
+	)
 }

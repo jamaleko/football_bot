@@ -522,7 +522,7 @@ func fetchBigMatches() []Match {
 
 		link :=
 			fmt.Sprintf(
-				"https://www.thesportsdb.com/api/v1/json/123/eventsnext.php?id=%s",
+				"https://www.thesportsdb.com/api/v1/json/123/eventsnextleague.php?id=%s",
 				leagueID,
 			)
 

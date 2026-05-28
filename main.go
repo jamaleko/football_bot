@@ -332,7 +332,6 @@ STOP`
 // =========================
 // LIVE MATCH
 // =========================
-
 func fetchLiveMatches() []Match {
 
  now :=
@@ -346,18 +345,32 @@ func fetchLiveMatches() []Match {
    now,
   )
 
+ fmt.Println("FETCH:", link)
+
  resp, err :=
   http.Get(link)
 
  if err != nil {
-  fmt.Println(err)
+
+  fmt.Println("HTTP ERROR:", err)
+
   return nil
  }
 
  defer resp.Body.Close()
 
+ fmt.Println(
+  "STATUS CODE:",
+  resp.StatusCode,
+ )
+
  body, _ :=
   io.ReadAll(resp.Body)
+
+ fmt.Println(
+  "RAW JSON:",
+  string(body),
+ )
 
  var result SportsDBResponse
 
@@ -369,30 +382,48 @@ func fetchLiveMatches() []Match {
 
  if err != nil {
 
-  fmt.Println(err)
+  fmt.Println(
+   "JSON ERROR:",
+   err,
+  )
 
   return nil
  }
+
+ fmt.Println(
+  "TOTAL EVENTS:",
+  len(result.Events),
+ )
 
  var matches []Match
 
  for _, e := range result.Events {
 
-  status :=
-   strings.ToUpper(
-    strings.TrimSpace(
-     e.StrStatus,
-    ),
-   )
+  fmt.Println(
+   "--------------------",
+  )
 
-  // skip not live
-  if status == "" ||
-   status == "NS" ||
-   status == "FT" ||
-   status == "POSTPONED" {
+  fmt.Println(
+   "HOME:",
+   e.StrHomeTeam,
+  )
 
-   continue
-  }
+  fmt.Println(
+   "AWAY:",
+   e.StrAwayTeam,
+  )
+
+  fmt.Println(
+   "STATUS:",
+   e.StrStatus,
+  )
+
+  fmt.Println(
+   "SCORE:",
+   e.IntHomeScore,
+   "-",
+   e.IntAwayScore,
+  )
 
   homeScore := 0
   awayScore := 0
@@ -422,6 +453,15 @@ func fetchLiveMatches() []Match {
    "%d",
    &id,
   )
+
+  status :=
+   strings.TrimSpace(
+    e.StrStatus,
+   )
+
+  if status == "" {
+   status = "UNKNOWN"
+  }
 
   match :=
    Match{
@@ -462,6 +502,11 @@ func fetchLiveMatches() []Match {
     match,
    )
  }
+
+ fmt.Println(
+  "FINAL MATCHES:",
+  len(matches),
+ )
 
  return matches
 }

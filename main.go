@@ -319,7 +319,7 @@ func sendLiveMatches(
 	var keyboardRows [][]map[string]string
 
 	index := 1
-	found := false
+	//found := false
 	for _, match :=
 		range data.Response {
 
@@ -402,7 +402,7 @@ func sendUpcomingMatches(
 	var keyboardRows [][]map[string]string
 
 	index := 1
-	found := false
+	//found := false
 	for day := 0; day < 30; day++ {
 
 		date :=

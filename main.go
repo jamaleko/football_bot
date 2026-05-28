@@ -355,11 +355,7 @@ func watchRandomMatch(
 	}
 
 	random :=
-		matches[
-			rand.Intn(
-				len(matches),
-			)
-		]
+		matches[rand.Intn(len(matches))]
 
 	watchMatch(
 		chatID,

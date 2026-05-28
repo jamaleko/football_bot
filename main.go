@@ -680,23 +680,23 @@ func sendBigMatches(
 		m := matches[i]
 
 		msg.WriteString(
-			fmt.Sprintf(
-				"%d. 🌍 %s\n🏆 %s\n⚽ %s vs %s\n🕒 %s %s\n\n",
+ fmt.Sprintf(
+  "%d. 🌍 %s\n🏆 %s\n⚽ %s vs %s\n🕒 %s WIB\n\n",
 
-				i+1,
+  i+1,
 
-				m.Country,
-				m.League,
+  m.Country,
+  m.League,
 
-				m.Home,
-				m.Away,
+  m.Home,
+  m.Away,
 
-				toWIB(
-					m.Date,
-					m.Time,
-				),
-			),
-		)
+  toWIB(
+   m.Date,
+   m.Time,
+  ),
+ ),
+)
 	}
 
 	sendTelegram(

@@ -468,27 +468,50 @@ func sendLiveMatches(
 
 	for i := 0; i < limit; i++ {
 
-		m := matches[i]
+ m := matches[i]
 
-		msg.WriteString(
-			fmt.Sprintf(
-				"%d. 🌍 %s\n🏆 %s\n⚽ %s %d - %d %s\n⏱ %s\n\n",
+ status := m.Status
 
-				i+1,
+ if status == "NS" {
 
-				m.Country,
-				m.League,
+  if len(m.Time) >= 5 {
 
-				m.Home,
-				m.HomeScore,
+   status =
+    "🕒 " + m.Time[:5] + " WIB"
 
-				m.AwayScore,
-				m.Away,
+  } else {
 
-				m.Status,
-			),
-		)
-	}
+   status = "🕒 Soon"
+  }
+
+ } else if status == "FT" {
+
+  status = "✅ FT"
+
+ } else {
+
+  status = "🔴 LIVE " + status
+ }
+
+ msg.WriteString(
+  fmt.Sprintf(
+   "%d. 🌍 %s\n🏆 %s\n⚽ %s %d - %d %s\n⏱ %s\n\n",
+
+   i+1,
+
+   m.Country,
+   m.League,
+
+   m.Home,
+   m.HomeScore,
+
+   m.AwayScore,
+   m.Away,
+
+   status,
+  ),
+ )
+}
 
 	msg.WriteString(
 		"Watch:\n/WATCH 1",

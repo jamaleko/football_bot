@@ -33,26 +33,6 @@ type TelegramResponse struct {
 	} `json:"result"`
 }
 
-type Event struct {
-	ID int
-
-	League string
-	Country string
-
-	HomeTeam string
-	AwayTeam string
-
-	HomeScore int
-	AwayScore int
-
-	Status string
-}
-
-type UserSession struct {
-	Watching bool
-	MatchIndex int
-}
-
 type SportsDBResponse struct {
 	Events []struct {
 
@@ -74,10 +54,30 @@ type SportsDBResponse struct {
 	} `json:"events"`
 }
 
+type Match struct {
+	ID int
+
+	Country string
+	League string
+
+	Home string
+	Away string
+
+	HomeScore int
+	AwayScore int
+
+	Status string
+}
+
+type UserSession struct {
+	Watching bool
+	Index int
+}
+
 var (
 	lastUpdateID = 0
 
-	cachedMatches []Event
+	cachedMatches []Match
 
 	userSessions =
 		map[int64]*UserSession{}
@@ -89,7 +89,7 @@ func main() {
 		time.Now().UnixNano(),
 	)
 
-	fmt.Println("⚽ BOT RUNNING...")
+	fmt.Println("⚽ BOT RUNNING")
 
 	for {
 
@@ -272,7 +272,7 @@ STOP`
 	)
 }
 
-func fetchLiveMatches() []Event {
+func fetchLiveMatches() []Match {
 
 	now :=
 		time.Now().Format(
@@ -304,25 +304,14 @@ func fetchLiveMatches() []Event {
 		&result,
 	)
 
-	var matches []Event
+	var matches []Match
 
 	for _, e := range result.Events {
 
-		if e.StrStatus != "Live" &&
-			e.StrStatus != "1H" &&
-			e.StrStatus != "2H" {
+		if e.IntHomeScore == "" &&
+			e.IntAwayScore == "" {
 
 			continue
-		}
-
-		status :=
-			e.StrStatus
-
-		if status == "1H" ||
-			status == "2H" ||
-			status == "Live" {
-
-			status = "LIVE"
 		}
 
 		homeScore := 0
@@ -340,6 +329,13 @@ func fetchLiveMatches() []Event {
 			&awayScore,
 		)
 
+		status :=
+			e.StrStatus
+
+		if status == "" {
+			status = "LIVE"
+		}
+
 		id := 0
 
 		fmt.Sscanf(
@@ -351,20 +347,20 @@ func fetchLiveMatches() []Event {
 		matches =
 			append(
 				matches,
-				Event{
+				Match{
 
 					ID: id,
-
-					League:
-						e.StrLeague,
 
 					Country:
 						e.StrCountry,
 
-					HomeTeam:
+					League:
+						e.StrLeague,
+
+					Home:
 						e.StrHomeTeam,
 
-					AwayTeam:
+					Away:
 						e.StrAwayTeam,
 
 					HomeScore:
@@ -427,11 +423,11 @@ func sendLiveMatches(
 				m.Country,
 				m.League,
 
-				m.HomeTeam,
+				m.Home,
 				m.HomeScore,
 
 				m.AwayScore,
-				m.AwayTeam,
+				m.Away,
 
 				m.Status,
 			),
@@ -469,7 +465,7 @@ func watchByNumber(
 	userSessions[chatID] =
 		&UserSession{
 			Watching: true,
-			MatchIndex: number - 1,
+			Index: number - 1,
 		}
 
 	sendMatchDetail(
@@ -507,7 +503,7 @@ func watchRandom(
 	userSessions[chatID] =
 		&UserSession{
 			Watching: true,
-			MatchIndex: index,
+			Index: index,
 		}
 
 	sendMatchDetail(
@@ -536,7 +532,7 @@ func refreshMatch(
 
 	sendMatchDetail(
 		chatID,
-		session.MatchIndex,
+		session.Index,
 	)
 }
 
@@ -573,7 +569,7 @@ func sendMatchDetail(
 		return
 	}
 
-	match :=
+	m :=
 		cachedMatches[index]
 
 	msg :=
@@ -594,16 +590,16 @@ func sendMatchDetail(
 🟥 Red:
 -`,
 
-			match.Country,
-			match.League,
+			m.Country,
+			m.League,
 
-			match.HomeTeam,
-			match.HomeScore,
+			m.Home,
+			m.HomeScore,
 
-			match.AwayScore,
-			match.AwayTeam,
+			m.AwayScore,
+			m.Away,
 
-			match.Status,
+			m.Status,
 		)
 
 	sendTelegram(

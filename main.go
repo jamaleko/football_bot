@@ -33,69 +33,54 @@ type TelegramResponse struct {
 	} `json:"result"`
 }
 
-type SofaLiveResponse struct {
-	Events []Event `json:"events"`
-}
-
 type Event struct {
-	ID int `json:"id"`
+	ID int
 
-	Status struct {
-		Description string `json:"description"`
-		Type        string `json:"type"`
-	} `json:"status"`
+	League string
+	Country string
 
-	Tournament struct {
-		Name string `json:"name"`
+	HomeTeam string
+	AwayTeam string
 
-		Category struct {
-			Name string `json:"name"`
-		} `json:"category"`
-	} `json:"tournament"`
+	HomeScore int
+	AwayScore int
 
-	HomeTeam struct {
-		Name string `json:"name"`
-	} `json:"homeTeam"`
-
-	AwayTeam struct {
-		Name string `json:"name"`
-	} `json:"awayTeam"`
-
-	HomeScore struct {
-		Current int `json:"current"`
-	} `json:"homeScore"`
-
-	AwayScore struct {
-		Current int `json:"current"`
-	} `json:"awayScore"`
-}
-
-type IncidentResponse struct {
-	Incidents []Incident `json:"incidents"`
-}
-
-type Incident struct {
-	Time int `json:"time"`
-
-	IncidentType string `json:"incidentType"`
-
-	Player struct {
-		Name string `json:"name"`
-	} `json:"player"`
+	Status string
 }
 
 type UserSession struct {
 	Watching bool
-	MatchID  int
+	MatchIndex int
+}
+
+type SportsDBResponse struct {
+	Events []struct {
+
+		IDEvent string `json:"idEvent"`
+
+		StrLeague string `json:"strLeague"`
+
+		StrCountry string `json:"strCountry"`
+
+		StrHomeTeam string `json:"strHomeTeam"`
+
+		StrAwayTeam string `json:"strAwayTeam"`
+
+		IntHomeScore string `json:"intHomeScore"`
+
+		IntAwayScore string `json:"intAwayScore"`
+
+		StrStatus string `json:"strStatus"`
+	} `json:"events"`
 }
 
 var (
 	lastUpdateID = 0
 
+	cachedMatches []Event
+
 	userSessions =
 		map[int64]*UserSession{}
-
-	cachedMatches []Event
 )
 
 func main() {
@@ -104,7 +89,7 @@ func main() {
 		time.Now().UnixNano(),
 	)
 
-	fmt.Println("BOT RUNNING...")
+	fmt.Println("⚽ BOT RUNNING...")
 
 	for {
 
@@ -114,60 +99,6 @@ func main() {
 			2 * time.Second,
 		)
 	}
-}
-
-func fetchURL(
-	link string,
-) ([]byte, error) {
-
-	req, err :=
-		http.NewRequest(
-			"GET",
-			link,
-			nil,
-		)
-
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set(
-		"User-Agent",
-		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
-	)
-
-	req.Header.Set(
-		"Accept",
-		"application/json",
-	)
-
-	req.Header.Set(
-		"Referer",
-		"https://www.sofascore.com/",
-	)
-
-	req.Header.Set(
-		"Origin",
-		"https://www.sofascore.com",
-	)
-
-	client := &http.Client{}
-
-	resp, err :=
-		client.Do(req)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	body, _ :=
-		io.ReadAll(resp.Body)
-
-	fmt.Println(string(body))
-
-	return body, nil
 }
 
 func getUpdates() {
@@ -193,7 +124,10 @@ func getUpdates() {
 
 	var result TelegramResponse
 
-	json.Unmarshal(body, &result)
+	json.Unmarshal(
+		body,
+		&result,
+	)
 
 	for _, update := range result.Result {
 
@@ -317,127 +251,7 @@ func mainKeyboard() map[string]interface{} {
 		"resize_keyboard": true,
 	}
 }
-func fetchLiveMatches() []Event {
 
-	now :=
-		time.Now().Format("2006-01-02")
-
-	url :=
-		fmt.Sprintf(
-			"https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=%s&s=Soccer",
-			now,
-		)
-
-	resp, err :=
-		http.Get(url)
-
-	if err != nil {
-		return nil
-	}
-
-	defer resp.Body.Close()
-
-	body, _ :=
-		io.ReadAll(resp.Body)
-
-	fmt.Println(string(body))
-
-	type SportsDB struct {
-		Events []struct {
-
-			IDEvent string `json:"idEvent"`
-
-			StrLeague string `json:"strLeague"`
-
-			StrHomeTeam string `json:"strHomeTeam"`
-
-			StrAwayTeam string `json:"strAwayTeam"`
-
-			IntHomeScore string `json:"intHomeScore"`
-
-			IntAwayScore string `json:"intAwayScore"`
-
-			StrStatus string `json:"strStatus"`
-		} `json:"events"`
-	}
-
-	var result SportsDB
-
-	json.Unmarshal(
-		body,
-		&result,
-	)
-
-	var matches []Event
-
-	for _, e := range result.Events {
-
-		homeScore := 0
-		awayScore := 0
-
-		fmt.Sscanf(
-			e.IntHomeScore,
-			"%d",
-			&homeScore,
-		)
-
-		fmt.Sscanf(
-			e.IntAwayScore,
-			"%d",
-			&awayScore,
-		)
-
-		matches =
-			append(
-				matches,
-				Event{
-
-					Tournament: struct {
-						Name string `json:"name"`
-
-						Category struct {
-							Name string `json:"name"`
-						} `json:"category"`
-					}{
-						Name: e.StrLeague,
-					},
-
-					HomeTeam: struct {
-						Name string `json:"name"`
-					}{
-						Name: e.StrHomeTeam,
-					},
-
-					AwayTeam: struct {
-						Name string `json:"name"`
-					}{
-						Name: e.StrAwayTeam,
-					},
-
-					HomeScore: struct {
-						Current int `json:"current"`
-					}{
-						Current: homeScore,
-					},
-
-					AwayScore: struct {
-						Current int `json:"current"`
-					}{
-						Current: awayScore,
-					},
-
-					Status: struct {
-						Description string `json:"description"`
-						Type string `json:"type"`
-					}{
-						Description: e.StrStatus,
-					},
-				},
-			)
-	}
-
-	return matches
-}
 func sendMainMenu(
 	chatID int64,
 ) {
@@ -458,6 +272,115 @@ STOP`
 	)
 }
 
+func fetchLiveMatches() []Event {
+
+	now :=
+		time.Now().Format(
+			"2006-01-02",
+		)
+
+	link :=
+		fmt.Sprintf(
+			"https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=%s&s=Soccer",
+			now,
+		)
+
+	resp, err :=
+		http.Get(link)
+
+	if err != nil {
+		return nil
+	}
+
+	defer resp.Body.Close()
+
+	body, _ :=
+		io.ReadAll(resp.Body)
+
+	var result SportsDBResponse
+
+	json.Unmarshal(
+		body,
+		&result,
+	)
+
+	var matches []Event
+
+	for _, e := range result.Events {
+
+		if e.StrStatus != "Live" &&
+			e.StrStatus != "1H" &&
+			e.StrStatus != "2H" {
+
+			continue
+		}
+
+		status :=
+			e.StrStatus
+
+		if status == "1H" ||
+			status == "2H" ||
+			status == "Live" {
+
+			status = "LIVE"
+		}
+
+		homeScore := 0
+		awayScore := 0
+
+		fmt.Sscanf(
+			e.IntHomeScore,
+			"%d",
+			&homeScore,
+		)
+
+		fmt.Sscanf(
+			e.IntAwayScore,
+			"%d",
+			&awayScore,
+		)
+
+		id := 0
+
+		fmt.Sscanf(
+			e.IDEvent,
+			"%d",
+			&id,
+		)
+
+		matches =
+			append(
+				matches,
+				Event{
+
+					ID: id,
+
+					League:
+						e.StrLeague,
+
+					Country:
+						e.StrCountry,
+
+					HomeTeam:
+						e.StrHomeTeam,
+
+					AwayTeam:
+						e.StrAwayTeam,
+
+					HomeScore:
+						homeScore,
+
+					AwayScore:
+						awayScore,
+
+					Status:
+						status,
+				},
+			)
+	}
+
+	return matches
+}
 
 func sendLiveMatches(
 	chatID int64,
@@ -501,16 +424,16 @@ func sendLiveMatches(
 
 				i+1,
 
-				m.Tournament.Category.Name,
-				m.Tournament.Name,
+				m.Country,
+				m.League,
 
-				m.HomeTeam.Name,
-				m.HomeScore.Current,
+				m.HomeTeam,
+				m.HomeScore,
 
-				m.AwayScore.Current,
-				m.AwayTeam.Name,
+				m.AwayScore,
+				m.AwayTeam,
 
-				m.Status.Description,
+				m.Status,
 			),
 		)
 	}
@@ -543,18 +466,15 @@ func watchByNumber(
 		return
 	}
 
-	match :=
-		cachedMatches[number-1]
-
 	userSessions[chatID] =
 		&UserSession{
 			Watching: true,
-			MatchID:  match.ID,
+			MatchIndex: number - 1,
 		}
 
 	sendMatchDetail(
 		chatID,
-		match.ID,
+		number-1,
 	)
 }
 
@@ -562,10 +482,13 @@ func watchRandom(
 	chatID int64,
 ) {
 
-	matches :=
-		fetchLiveMatches()
+	if len(cachedMatches) == 0 {
 
-	if len(matches) == 0 {
+		cachedMatches =
+			fetchLiveMatches()
+	}
+
+	if len(cachedMatches) == 0 {
 
 		sendTelegram(
 			chatID,
@@ -576,18 +499,20 @@ func watchRandom(
 		return
 	}
 
-	random :=
-		matches[rand.Intn(len(matches))]
+	index :=
+		rand.Intn(
+			len(cachedMatches),
+		)
 
 	userSessions[chatID] =
 		&UserSession{
 			Watching: true,
-			MatchID:  random.ID,
+			MatchIndex: index,
 		}
 
 	sendMatchDetail(
 		chatID,
-		random.ID,
+		index,
 	)
 }
 
@@ -611,7 +536,7 @@ func refreshMatch(
 
 	sendMatchDetail(
 		chatID,
-		session.MatchID,
+		session.MatchIndex,
 	)
 }
 
@@ -631,121 +556,25 @@ func stopWatch(
 	)
 }
 
-func findMatch(
-	matchID int,
-) *Event {
-
-	matches :=
-		fetchLiveMatches()
-
-	for _, m := range matches {
-
-		if m.ID == matchID {
-			return &m
-		}
-	}
-
-	return nil
-}
-
-func fetchIncidents(
-	matchID int,
-) []Incident {
-
-	url :=
-		fmt.Sprintf(
-			"https://www.sofascore.com/api/v1/event/%d/incidents",
-			matchID,
-		)
-
-	body, err :=
-		fetchURL(url)
-
-	if err != nil {
-		return nil
-	}
-
-	var result IncidentResponse
-
-	json.Unmarshal(
-		body,
-		&result,
-	)
-
-	return result.Incidents
-}
-
 func sendMatchDetail(
 	chatID int64,
-	matchID int,
+	index int,
 ) {
 
-	match :=
-		findMatch(matchID)
-
-	if match == nil {
+	if index < 0 ||
+		index >= len(cachedMatches) {
 
 		sendTelegram(
 			chatID,
-			"❌ Match selesai",
+			"❌ Match tidak ditemukan",
 			nil,
 		)
 
 		return
 	}
 
-	incidents :=
-		fetchIncidents(matchID)
-
-	goals := []string{}
-	yellows := []string{}
-	reds := []string{}
-
-	for _, i := range incidents {
-
-		switch i.IncidentType {
-
-		case "goal":
-
-			goals =
-				append(
-					goals,
-					fmt.Sprintf(
-						"%s %d'",
-						i.Player.Name,
-						i.Time,
-					),
-				)
-
-		case "yellowCard":
-
-			yellows =
-				append(
-					yellows,
-					i.Player.Name,
-				)
-
-		case "redCard":
-
-			reds =
-				append(
-					reds,
-					i.Player.Name,
-				)
-		}
-	}
-
-	if len(goals) == 0 {
-		goals = append(goals, "-")
-	}
-
-	if len(yellows) == 0 {
-		yellows = append(yellows, "-")
-	}
-
-	if len(reds) == 0 {
-		reds = append(reds, "-")
-	}
+	match :=
+		cachedMatches[index]
 
 	msg :=
 		fmt.Sprintf(
@@ -757,28 +586,24 @@ func sendMatchDetail(
 ⏱ %s
 
 ⚽ Goal:
-%s
+-
 
 🟨 Yellow:
-%s
+-
 
 🟥 Red:
-%s`,
+-`,
 
-			match.Tournament.Category.Name,
-			match.Tournament.Name,
+			match.Country,
+			match.League,
 
-			match.HomeTeam.Name,
-			match.HomeScore.Current,
+			match.HomeTeam,
+			match.HomeScore,
 
-			match.AwayScore.Current,
-			match.AwayTeam.Name,
+			match.AwayScore,
+			match.AwayTeam,
 
-			match.Status.Description,
-
-			strings.Join(goals, "\n"),
-			strings.Join(yellows, "\n"),
-			strings.Join(reds, "\n"),
+			match.Status,
 		)
 
 	sendTelegram(
@@ -794,7 +619,7 @@ func sendBigMatches(
 
 	sendTelegram(
 		chatID,
-		"🔥 BIG MATCHES COMING SOON",
+		"🔥 BIG MATCH COMING SOON",
 		nil,
 	)
 }
@@ -821,7 +646,9 @@ func sendTelegram(
 	if keyboard != nil {
 
 		kb, _ :=
-			json.Marshal(keyboard)
+			json.Marshal(
+				keyboard,
+			)
 
 		data.Set(
 			"reply_markup",

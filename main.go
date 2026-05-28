@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sort"
 )
 
 const BOT_TOKEN = "8727181698:AAGAehZUWyQmh7CBiWNt_x6Xsevh2hrcuCE"
@@ -585,7 +586,21 @@ func fetchBigMatches() []Match {
 				)
 		}
 	}
-
+	sort.Slice(
+	 matches,
+	 func(i, j int) bool {
+	
+	  a :=
+	   matches[i].Date + " " +
+	    matches[i].Time
+	
+	  b :=
+	   matches[j].Date + " " +
+	    matches[j].Time
+	
+	  return a < b
+	 },
+	)
 	return matches
 }
 

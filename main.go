@@ -100,15 +100,30 @@ var (
 
 // BIG LEAGUES
 var bigLeagues = []string{
-	"4328", // EPL
-	"4335", // La Liga
-	"4331", // Bundesliga
-	"4332", // Serie A
-	"4334", // Ligue 1
-	"4480", // UCL
-	"4481", // Europa
-	"4482", // Conference
-	"4346", // MLS
+
+ "4328", // EPL
+ "4335", // La Liga
+ "4331", // Bundesliga
+ "4332", // Serie A
+ "4334", // Ligue 1
+
+ "4480", // UCL
+ "4481", // Europa
+ "4482", // Conference
+
+ "4346", // MLS
+
+ "4351", // Brazil Serie A
+ "4351", // Argentina
+ "4337", // Eredivisie
+ "4340", // Portugal
+ "4339", // Turkey
+ "4347", // Saudi League
+
+ "4429", // World Cup
+ "4424", // Euro
+
+ "4562", // International Friendly
 }
 
 // =========================

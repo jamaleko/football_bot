@@ -1069,57 +1069,55 @@ func getTelegramUpdates() {
 
 				switch text {
 
-				switch text {
+case "/start":
 
-				case "/start":
-				
-				 sendMainMenu(chatID)
-				
-				case "/live":
-				
-				 sendLiveMatches(chatID)
-				
-				case "/big":
-				
-				 sendUpcomingMatches(chatID)
-				
-				case "/random":
-				
-				 watchRandomMatch(chatID)
-				
-				case "/refresh":
-				
-				 session := userSessions[chatID]
-				
-				 if session == nil {
-				
-				  sendTelegram(
-				   chatID,
-				   "❌ Tidak ada match yang sedang ditonton",
-				   nil,
-				  )
-				
-				  continue
-				 }
-				
-				 refreshStats(chatID)
-				
-				case "/stop":
-				
-				 session := userSessions[chatID]
-				
-				 if session != nil {
-				
-				  session.IsWatching = false
-				  session.SelectedMatch = 0
-				 }
-				
-				 sendTelegram(
-				  chatID,
-				  "🛑 Watch stopped",
-				  nil,
-				 )
-				}
+ sendMainMenu(chatID)
+
+case "/live":
+
+ sendLiveMatches(chatID)
+
+case "/big":
+
+ sendUpcomingMatches(chatID)
+
+case "/random":
+
+ watchRandomMatch(chatID)
+
+case "/refresh":
+
+ session := userSessions[chatID]
+
+ if session == nil {
+
+  sendTelegram(
+   chatID,
+   "❌ Tidak ada match yang sedang ditonton",
+   nil,
+  )
+
+  continue
+ }
+
+ refreshStats(chatID)
+
+case "/stop":
+
+ session := userSessions[chatID]
+
+ if session != nil {
+
+  session.IsWatching = false
+  session.SelectedMatch = 0
+ }
+
+ sendTelegram(
+  chatID,
+  "🛑 Watch stopped",
+  nil,
+ )
+}
 			}
 
 			// BUTTON CLICK

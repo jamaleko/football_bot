@@ -418,7 +418,7 @@ func watchRandom(chatID int64) {
 	random :=
 		matches[
 			rand.Intn(
-				len(matches),
+				len(matches)
 			)
 		]
 

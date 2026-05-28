@@ -317,7 +317,127 @@ func mainKeyboard() map[string]interface{} {
 		"resize_keyboard": true,
 	}
 }
+func fetchLiveMatches() []Event {
 
+	now :=
+		time.Now().Format("2006-01-02")
+
+	url :=
+		fmt.Sprintf(
+			"https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=%s&s=Soccer",
+			now,
+		)
+
+	resp, err :=
+		http.Get(url)
+
+	if err != nil {
+		return nil
+	}
+
+	defer resp.Body.Close()
+
+	body, _ :=
+		io.ReadAll(resp.Body)
+
+	fmt.Println(string(body))
+
+	type SportsDB struct {
+		Events []struct {
+
+			IDEvent string `json:"idEvent"`
+
+			StrLeague string `json:"strLeague"`
+
+			StrHomeTeam string `json:"strHomeTeam"`
+
+			StrAwayTeam string `json:"strAwayTeam"`
+
+			IntHomeScore string `json:"intHomeScore"`
+
+			IntAwayScore string `json:"intAwayScore"`
+
+			StrStatus string `json:"strStatus"`
+		} `json:"events"`
+	}
+
+	var result SportsDB
+
+	json.Unmarshal(
+		body,
+		&result,
+	)
+
+	var matches []Event
+
+	for _, e := range result.Events {
+
+		homeScore := 0
+		awayScore := 0
+
+		fmt.Sscanf(
+			e.IntHomeScore,
+			"%d",
+			&homeScore,
+		)
+
+		fmt.Sscanf(
+			e.IntAwayScore,
+			"%d",
+			&awayScore,
+		)
+
+		matches =
+			append(
+				matches,
+				Event{
+
+					Tournament: struct {
+						Name string `json:"name"`
+
+						Category struct {
+							Name string `json:"name"`
+						} `json:"category"`
+					}{
+						Name: e.StrLeague,
+					},
+
+					HomeTeam: struct {
+						Name string `json:"name"`
+					}{
+						Name: e.StrHomeTeam,
+					},
+
+					AwayTeam: struct {
+						Name string `json:"name"`
+					}{
+						Name: e.StrAwayTeam,
+					},
+
+					HomeScore: struct {
+						Current int `json:"current"`
+					}{
+						Current: homeScore,
+					},
+
+					AwayScore: struct {
+						Current int `json:"current"`
+					}{
+						Current: awayScore,
+					},
+
+					Status: struct {
+						Description string `json:"description"`
+						Type string `json:"type"`
+					}{
+						Description: e.StrStatus,
+					},
+				},
+			)
+	}
+
+	return matches
+}
 func sendMainMenu(
 	chatID int64,
 ) {
@@ -338,27 +458,6 @@ STOP`
 	)
 }
 
-func fetchLiveMatches() []Event {
-
-	url :=
-		"https://www.sofascore.com/api/v1/sport/football/events/live"
-
-	body, err :=
-		fetchURL(url)
-
-	if err != nil {
-		return nil
-	}
-
-	var result SofaLiveResponse
-
-	json.Unmarshal(
-		body,
-		&result,
-	)
-
-	return result.Events
-}
 
 func sendLiveMatches(
 	chatID int64,

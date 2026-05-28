@@ -114,14 +114,15 @@ var bigLeagues = []string{
  "4346", // MLS
 
  "4351", // Brazil Serie A
- "4351", // Argentina
+ "4500", // Argentina
  "4337", // Eredivisie
- "4340", // Portugal
+ "4344", // Portugal
  "4339", // Turkey
- "4347", // Saudi League
+ "4668", // Saudi League
 
  "4429", // World Cup
- "4424", // Euro
+ "4481", // Euro
+ "4790", // Indonesia
 
  "4562", // International Friendly
 }

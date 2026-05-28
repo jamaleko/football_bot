@@ -2,9 +2,20 @@
 
 package main
 
-import ( "bytes" "encoding/json" "fmt" "io" "log" "math/rand" "net/http" "os" "strconv" "strings" "time"
+import ( 
+	"bytes" 
+	"encoding/json" 
+	"fmt" 
+	"io" 
+	"log" 
+	"math/rand" 
+	"net/http" 
+	"os" 
+	"strconv" 
+	"strings" 
+	"time"
 
-"github.com/joho/godotenv"
+	"github.com/joho/godotenv"
 
 )
 

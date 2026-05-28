@@ -345,106 +345,28 @@ func fetchLiveMatches() []Match {
    now,
   )
 
- fmt.Println("FETCH:", link)
-
  resp, err :=
   http.Get(link)
 
  if err != nil {
-
-  fmt.Println("HTTP ERROR:", err)
-
   return nil
  }
 
  defer resp.Body.Close()
 
- fmt.Println(
-  "STATUS CODE:",
-  resp.StatusCode,
- )
-
  body, _ :=
   io.ReadAll(resp.Body)
 
- fmt.Println(
-  "RAW JSON:",
-  string(body),
- )
-
  var result SportsDBResponse
 
- err =
-  json.Unmarshal(
-   body,
-   &result,
-  )
-
- if err != nil {
-
-  fmt.Println(
-   "JSON ERROR:",
-   err,
-  )
-
-  return nil
- }
-
- fmt.Println(
-  "TOTAL EVENTS:",
-  len(result.Events),
+ json.Unmarshal(
+  body,
+  &result,
  )
 
  var matches []Match
 
  for _, e := range result.Events {
-
-  fmt.Println(
-   "--------------------",
-  )
-
-  fmt.Println(
-   "HOME:",
-   e.StrHomeTeam,
-  )
-
-  fmt.Println(
-   "AWAY:",
-   e.StrAwayTeam,
-  )
-
-  fmt.Println(
-   "STATUS:",
-   e.StrStatus,
-  )
-
-  fmt.Println(
-   "SCORE:",
-   e.IntHomeScore,
-   "-",
-   e.IntAwayScore,
-  )
-
-  homeScore := 0
-  awayScore := 0
-
-  if e.IntHomeScore != "" {
-
-   fmt.Sscanf(
-    e.IntHomeScore,
-    "%d",
-    &homeScore,
-   )
-  }
-
-  if e.IntAwayScore != "" {
-
-   fmt.Sscanf(
-    e.IntAwayScore,
-    "%d",
-    &awayScore,
-   )
-  }
 
   id := 0
 
@@ -454,14 +376,20 @@ func fetchLiveMatches() []Match {
    &id,
   )
 
-  status :=
-   strings.TrimSpace(
-    e.StrStatus,
-   )
+  homeScore := 0
+  awayScore := 0
 
-  if status == "" {
-   status = "UNKNOWN"
-  }
+  fmt.Sscanf(
+   e.IntHomeScore,
+   "%d",
+   &homeScore,
+  )
+
+  fmt.Sscanf(
+   e.IntAwayScore,
+   "%d",
+   &awayScore,
+  )
 
   match :=
    Match{
@@ -487,7 +415,7 @@ func fetchLiveMatches() []Match {
      awayScore,
 
     Status:
-     status,
+     e.StrStatus,
 
     Date:
      e.DateEvent,
@@ -502,11 +430,6 @@ func fetchLiveMatches() []Match {
     match,
    )
  }
-
- fmt.Println(
-  "FINAL MATCHES:",
-  len(matches),
- )
 
  return matches
 }

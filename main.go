@@ -335,122 +335,135 @@ STOP`
 
 func fetchLiveMatches() []Match {
 
-	now :=
-		time.Now().Format(
-			"2006-01-02",
-		)
+ now :=
+  time.Now().Format(
+   "2006-01-02",
+  )
 
-	link :=
-		fmt.Sprintf(
-			"https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=%s&s=Soccer",
-			now,
-		)
+ link :=
+  fmt.Sprintf(
+   "https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=%s&s=Soccer",
+   now,
+  )
 
-	resp, err :=
-		http.Get(link)
+ resp, err :=
+  http.Get(link)
 
-	if err != nil {
-		return nil
-	}
+ if err != nil {
+  fmt.Println(err)
+  return nil
+ }
 
-	defer resp.Body.Close()
+ defer resp.Body.Close()
 
-	body, _ :=
-		io.ReadAll(resp.Body)
+ body, _ :=
+  io.ReadAll(resp.Body)
 
-	var result SportsDBResponse
+ var result SportsDBResponse
 
-	json.Unmarshal(
-		body,
-		&result,
-	)
+ err =
+  json.Unmarshal(
+   body,
+   &result,
+  )
 
-	var matches []Match
+ if err != nil {
 
-	for _, e := range result.Events {
+  fmt.Println(err)
 
-		if e.StrStatus == "FT" {
-			continue
-		}
+  return nil
+ }
 
-		status :=
- strings.ToUpper(
-  e.StrStatus,
- )
+ var matches []Match
 
-if status == "" {
- continue
-}
+ for _, e := range result.Events {
 
-if status == "FT" ||
- status == "NS" ||
- status == "POSTPONED" {
+  status :=
+   strings.ToUpper(
+    strings.TrimSpace(
+     e.StrStatus,
+    ),
+   )
 
- continue
-}
+  // skip not live
+  if status == "" ||
+   status == "NS" ||
+   status == "FT" ||
+   status == "POSTPONED" {
 
-		homeScore := 0
-		awayScore := 0
+   continue
+  }
 
-		fmt.Sscanf(
-			e.IntHomeScore,
-			"%d",
-			&homeScore,
-		)
+  homeScore := 0
+  awayScore := 0
 
-		fmt.Sscanf(
-			e.IntAwayScore,
-			"%d",
-			&awayScore,
-		)
+  if e.IntHomeScore != "" {
 
-		status :=
-			e.StrStatus
+   fmt.Sscanf(
+    e.IntHomeScore,
+    "%d",
+    &homeScore,
+   )
+  }
 
-		if status == "" {
-			status = "LIVE"
-		}
+  if e.IntAwayScore != "" {
 
-		id := 0
+   fmt.Sscanf(
+    e.IntAwayScore,
+    "%d",
+    &awayScore,
+   )
+  }
 
-		fmt.Sscanf(
-			e.IDEvent,
-			"%d",
-			&id,
-		)
+  id := 0
 
-		matches =
-			append(
-				matches,
-				Match{
+  fmt.Sscanf(
+   e.IDEvent,
+   "%d",
+   &id,
+  )
 
-					ID: id,
+  match :=
+   Match{
 
-					Country:
-						e.StrCountry,
+    ID: id,
 
-					League:
-						e.StrLeague,
+    Country:
+     e.StrCountry,
 
-					Home:
-						e.StrHomeTeam,
+    League:
+     e.StrLeague,
 
-					Away:
-						e.StrAwayTeam,
+    Home:
+     e.StrHomeTeam,
 
-					HomeScore:
-						homeScore,
+    Away:
+     e.StrAwayTeam,
 
-					AwayScore:
-						awayScore,
+    HomeScore:
+     homeScore,
 
-					Status:
-						status,
-				},
-			)
-	}
+    AwayScore:
+     awayScore,
 
-	return matches
+    Status:
+     status,
+
+    Date:
+     e.DateEvent,
+
+    Time:
+     e.StrTime,
+   }
+
+  matches =
+   append(
+    matches,
+    match,
+   )
+ }
+
+ return matches
 }
 
 func sendLiveMatches(

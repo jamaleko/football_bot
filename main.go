@@ -342,7 +342,7 @@ func sendLiveMatches(
 			)
 
 		message += title
-		found = true
+		//found = true
 		userMatches[chatID] =
 			append(
 				userMatches[chatID],
@@ -479,7 +479,7 @@ func sendUpcomingMatches(
 				)
 
 			message += title
-			found = true
+			//found = true
 			userMatches[chatID] =
 				append(
 					userMatches[chatID],

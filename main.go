@@ -373,11 +373,21 @@ func fetchLiveMatches() []Match {
 			continue
 		}
 
-		if e.IntHomeScore == "" &&
-			e.IntAwayScore == "" {
+		status :=
+ strings.ToUpper(
+  e.StrStatus,
+ )
 
-			continue
-		}
+if status == "" {
+ continue
+}
+
+if status == "FT" ||
+ status == "NS" ||
+ status == "POSTPONED" {
+
+ continue
+}
 
 		homeScore := 0
 		awayScore := 0

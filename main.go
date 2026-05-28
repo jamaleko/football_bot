@@ -433,7 +433,29 @@ func fetchLiveMatches() []Match {
 
  return matches
 }
+func toWIB(date string, clock string) string {
 
+ layout :=
+  "2006-01-02 15:04:05"
+
+ t, err :=
+  time.Parse(
+   layout,
+   date+" "+clock,
+  )
+
+ if err != nil {
+
+  return clock
+ }
+
+ wib :=
+  t.Add(7 * time.Hour)
+
+ return wib.Format(
+  "02 Jan 15:04",
+ )
+}
 func sendLiveMatches(
 	chatID int64,
 ) {
@@ -477,8 +499,12 @@ func sendLiveMatches(
   if len(m.Time) >= 5 {
 
    status =
- "📅 " + m.Date +
- "\n🕒 " + m.Time[:5] + " WIB"
+ "🕒 " +
+  toWIB(
+   m.Date,
+   m.Time,
+  ) +
+  " WIB"
 
   } else {
 

@@ -691,8 +691,10 @@ func sendBigMatches(
 				m.Home,
 				m.Away,
 
-				m.Date,
-				m.Time,
+				toWIB(
+					m.Date,
+					m.Time,
+				),
 			),
 		)
 	}

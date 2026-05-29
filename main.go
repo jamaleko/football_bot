@@ -430,7 +430,7 @@ func fetchLiveMatches() []Match {
 
 	body, _ :=
 		io.ReadAll(resp.Body)
-
+		fmt.Println("STATUS:", resp.StatusCode)
 	var result SofaLiveResponse
 
 	err =
@@ -448,7 +448,7 @@ func fetchLiveMatches() []Match {
 
 		return nil
 	}
-
+	fmt.Println("TOTAL EVENTS:", len(result.Events))
 	var matches []Match
 
 	for _, e := range result.Events {

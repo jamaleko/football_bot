@@ -397,7 +397,7 @@ STOP`
 // LIVE MATCH
 // =========================
 func fetchLiveMatches() []Match {
-
+//
 	url :=
 		"https://www.sofascore.com/api/v1/sport/football/events/live"
 	resp, err := http.Get(url)

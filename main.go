@@ -401,8 +401,28 @@ func fetchLiveMatches() []Match {
 	url :=
 		"https://www.sofascore.com/api/v1/sport/football/events/live"
 	resp, err := http.Get(url)
+	
+    if err != nil {
+        fmt.Println("ERROR:", err)
+        return nil
+    }
+    defer resp.Body.Close()
 
-fmt.Println(resp.StatusCode)
+    fmt.Println("STATUS:", resp.StatusCode)
+
+    body, _ := io.ReadAll(resp.Body)
+
+    fmt.Println("BODY SIZE:", len(body))
+
+    var result LiveResponse
+
+    err = json.Unmarshal(body, &result)
+    if err != nil {
+        fmt.Println("JSON ERROR:", err)
+        return nil
+    }
+
+    fmt.Println("TOTAL EVENTS:", len(result.Events))
 	req, _ :=
 		http.NewRequest(
 			"GET",

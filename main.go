@@ -82,8 +82,13 @@ type Match struct {
 }
 
 type UserSession struct {
-	Watching bool
-	Index int
+ Watching bool
+ Index int
+
+ LastHome int
+ LastAway int
+
+ LastStatus string
 }
 
 // =========================
@@ -730,18 +735,106 @@ func watchByNumber(
 		return
 	}
 
-	userSessions[chatID] =
-		&UserSession{
-			Watching: true,
-			Index: number - 1,
-		}
+	m := cachedMatches[number-1]
+
+userSessions[chatID] =
+ &UserSession{
+  Watching: true,
+  Index: number - 1,
+
+  LastHome: m.HomeScore,
+  LastAway: m.AwayScore,
+
+  LastStatus: m.Status,
+ }
+
+go autoWatch(chatID)
 
 	sendMatchDetail(
 		chatID,
 		number-1,
 	)
 }
+func autoWatch(chatID int64) {
 
+ for {
+
+  session :=
+   userSessions[chatID]
+
+  if session == nil ||
+   !session.Watching {
+
+   return
+  }
+
+  matches :=
+   fetchLiveMatches()
+
+  if session.Index >= len(matches) {
+
+   time.Sleep(
+    30 * time.Second,
+   )
+
+   continue
+  }
+
+  m :=
+   matches[session.Index]
+
+  if m.HomeScore != session.LastHome ||
+   m.AwayScore != session.LastAway {
+
+   sendTelegram(
+    chatID,
+    fmt.Sprintf(
+     "⚽ GOAL\n\n%s %d - %d %s",
+     m.Home,
+     m.HomeScore,
+     m.AwayScore,
+     m.Away,
+    ),
+    nil,
+   )
+
+   session.LastHome =
+    m.HomeScore
+
+   session.LastAway =
+    m.AwayScore
+  }
+
+  if m.Status != session.LastStatus {
+
+   sendTelegram(
+    chatID,
+    fmt.Sprintf(
+     "🔔 STATUS\n\n%s",
+     m.Status,
+    ),
+    nil,
+   )
+
+   session.LastStatus =
+    m.Status
+
+   if m.Status == "FT" {
+
+    delete(
+     userSessions,
+     chatID,
+    )
+
+    return
+   }
+  }
+
+  time.Sleep(
+   30 * time.Second,
+  )
+ }
+}
 func watchRandom(
 	chatID int64,
 ) {
@@ -768,11 +861,20 @@ func watchRandom(
 			len(cachedMatches),
 		)
 
-	userSessions[chatID] =
-		&UserSession{
-			Watching: true,
-			Index: index,
-		}
+	m := cachedMatches[number-1]
+
+userSessions[chatID] =
+ &UserSession{
+  Watching: true,
+  Index: number - 1,
+
+  LastHome: m.HomeScore,
+  LastAway: m.AwayScore,
+
+  LastStatus: m.Status,
+ }
+
+go autoWatch(chatID)
 
 	sendMatchDetail(
 		chatID,

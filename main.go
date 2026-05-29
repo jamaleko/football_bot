@@ -22,71 +22,7 @@ var TELEGRAM_API =
 // =========================
 // STRUCT
 // =========================
-// =========================
-// SOFASCORE STRUCT
-// =========================
 
-type SofaLiveResponse struct {
-	Events []SofaEvent `json:"events"`
-}
-
-type SofaEvent struct {
-	ID int `json:"id"`
-
-	HomeTeam Team `json:"homeTeam"`
-	AwayTeam Team `json:"awayTeam"`
-
-	Tournament Tournament `json:"tournament"`
-
-	Status Status `json:"status"`
-
-	HomeScore Score `json:"homeScore"`
-	AwayScore Score `json:"awayScore"`
-
-	StartTS int64 `json:"startTimestamp"`
-}
-
-type Team struct {
-	Name string `json:"name"`
-}
-
-type Tournament struct {
-	Name string `json:"name"`
-
-	Category Category `json:"category"`
-}
-
-type Category struct {
-	Name string `json:"name"`
-}
-
-type Status struct {
-	Description string `json:"description"`
-	Type string `json:"type"`
-}
-
-type Score struct {
-	Current int `json:"current"`
-}
-
-type IncidentResponse struct {
-	Incidents []Incident `json:"incidents"`
-}
-
-type Incident struct {
-	IncidentType string `json:"incidentType"`
-
-	Time int `json:"time"`
-
-	Player struct {
-		Name string `json:"name"`
-	} `json:"player"`
-
-	IsHome bool `json:"isHome"`
-
-	HomeScore int `json:"homeScore"`
-	AwayScore int `json:"awayScore"`
-}
 type TelegramResponse struct {
 	Ok     bool `json:"ok"`
 	Result []struct {
@@ -397,176 +333,129 @@ STOP`
 // LIVE MATCH
 // =========================
 func fetchLiveMatches() []Match {
-//
-	url :=
-		"https://www.sofascore.com/api/v1/sport/football/events/live"
-	resp, err := http.Get(url)
-	
-	req, _ :=
-		http.NewRequest(
-			"GET",
-			url,
-			nil,
-		)
 
-	req.Header.Set(
-		"User-Agent",
-		"Mozilla/5.0",
-	)
+ now :=
+  time.Now().Format(
+   "2006-01-02",
+  )
 
-	client :=
-		&http.Client{}
+ link :=
+  fmt.Sprintf(
+   "https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=%s&s=Soccer",
+   now,
+  )
 
-	resp, err :=
-		client.Do(req)
+ resp, err :=
+  http.Get(link)
 
-	if err != nil {
+ if err != nil {
+  return nil
+ }
 
-		fmt.Println(err)
+ defer resp.Body.Close()
 
-		return nil
-	}
+ body, _ :=
+  io.ReadAll(resp.Body)
 
-	defer resp.Body.Close()
+ var result SportsDBResponse
 
-	body, _ :=
-		io.ReadAll(resp.Body)
-		fmt.Println("STATUS:", resp.StatusCode)
-	var result SofaLiveResponse
+ json.Unmarshal(
+  body,
+  &result,
+ )
 
-	err =
-		json.Unmarshal(
-			body,
-			&result,
-		)
+ var matches []Match
 
-	if err != nil {
+ for _, e := range result.Events {
 
-		fmt.Println(
-			"JSON ERROR:",
-			err,
-		)
+  id := 0
 
-		return nil
-	}
-	fmt.Println("TOTAL EVENTS:", len(result.Events))
-	var matches []Match
+  fmt.Sscanf(
+   e.IDEvent,
+   "%d",
+   &id,
+  )
 
-	for _, e := range result.Events {
+  homeScore := 0
+  awayScore := 0
 
-		start :=
-			time.Unix(
-				e.StartTS,
-				0,
-			)
+  fmt.Sscanf(
+   e.IntHomeScore,
+   "%d",
+   &homeScore,
+  )
 
-		wib :=
-			start.In(
-				time.FixedZone(
-					"WIB",
-					7*3600,
-				),
-			)
+  fmt.Sscanf(
+   e.IntAwayScore,
+   "%d",
+   &awayScore,
+  )
 
-		match :=
-			Match{
+  match :=
+   Match{
 
-				ID: e.ID,
+    ID: id,
 
-				Country:
-					e.Tournament.Category.Name,
+    Country:
+     e.StrCountry,
 
-				League:
-					e.Tournament.Name,
+    League:
+     e.StrLeague,
 
-				Home:
-					e.HomeTeam.Name,
+    Home:
+     e.StrHomeTeam,
 
-				Away:
-					e.AwayTeam.Name,
+    Away:
+     e.StrAwayTeam,
 
-				HomeScore:
-					e.HomeScore.Current,
+    HomeScore:
+     homeScore,
 
-				AwayScore:
-					e.AwayScore.Current,
+    AwayScore:
+     awayScore,
 
-				Status:
-					e.Status.Description,
+    Status:
+     e.StrStatus,
 
-				Date:
-					wib.Format(
-						"2006-01-02",
-					),
+    Date:
+     e.DateEvent,
 
-				Time:
-					wib.Format(
-						"15:04",
-					),
-			}
+    Time:
+     e.StrTime,
+   }
 
-		matches =
-			append(
-				matches,
-				match,
-			)
-	}
+  matches =
+   append(
+    matches,
+    match,
+   )
+ }
 
-	return matches
+ return matches
 }
+func toWIB(date string, clock string) string {
 
-func fetchIncidents(
-	eventID int,
-) []Incident {
+ layout :=
+  "2006-01-02 15:04:05"
 
-	url :=
-		fmt.Sprintf(
-			"https://www.sofascore.com/api/v1/event/%d/incidents",
-			eventID,
-		)
+ t, err :=
+  time.Parse(
+   layout,
+   date+" "+clock,
+  )
 
-	req, _ :=
-		http.NewRequest(
-			"GET",
-			url,
-			nil,
-		)
+ if err != nil {
 
-	req.Header.Set(
-		"User-Agent",
-		"Mozilla/5.0",
-	)
+  return clock
+ }
 
-	client :=
-		&http.Client{}
+ wib :=
+  t.Add(7 * time.Hour)
 
-	resp, err :=
-		client.Do(req)
-
-	if err != nil {
-		return nil
-	}
-
-	defer resp.Body.Close()
-
-	body, _ :=
-		io.ReadAll(resp.Body)
-
-	var result IncidentResponse
-
-	err =
-		json.Unmarshal(
-			body,
-			&result,
-		)
-
-	if err != nil {
-		return nil
-	}
-
-	return result.Incidents
+ return wib.Format(
+  "02 Jan 15:04",
+ )
 }
-
 func sendLiveMatches(
 	chatID int64,
 ) {
@@ -574,8 +463,7 @@ func sendLiveMatches(
 	matches :=
 		fetchLiveMatches()
 
-	cachedMatches =
-		matches
+	cachedMatches = matches
 
 	if len(matches) == 0 {
 
@@ -602,35 +490,55 @@ func sendLiveMatches(
 
 	for i := 0; i < limit; i++ {
 
-		m := matches[i]
+ m := matches[i]
 
-		status :=
-			"🔴 LIVE " +
-				m.Status
+ status := m.Status
 
-		msg.WriteString(
-			fmt.Sprintf(
-				"%d. 🌍 %s\n🏆 %s\n⚽ %s %d - %d %s\n⏱ %s\n🕒 %s WIB\n\n",
+ if status == "NS" {
 
-				i+1,
+  if len(m.Time) >= 5 {
 
-				m.Country,
-				m.League,
+   status =
+ "🕒 " +
+  toWIB(
+   m.Date,
+   m.Time,
+  ) +
+  " WIB"
 
-				m.Home,
-				m.HomeScore,
+  } else {
 
-				m.AwayScore,
-				m.Away,
+   status = "🕒 Soon"
+  }
 
-				status,
+ } else if status == "FT" {
 
-				m.Date+
-					" "+
-					m.Time,
-			),
-		)
-	}
+  status = "✅ FT"
+
+ } else {
+
+  status = "🔴 LIVE " + status
+ }
+
+ msg.WriteString(
+  fmt.Sprintf(
+   "%d. 🌍 %s\n🏆 %s\n⚽ %s %d - %d %s\n⏱ %s\n\n",
+
+   i+1,
+
+   m.Country,
+   m.League,
+
+   m.Home,
+   m.HomeScore,
+
+   m.AwayScore,
+   m.Away,
+
+   status,
+  ),
+ )
+}
 
 	msg.WriteString(
 		"Watch:\n/WATCH 1",
@@ -641,29 +549,6 @@ func sendLiveMatches(
 		msg.String(),
 		nil,
 	)
-}
-func toWIB(date string, clock string) string {
-
- layout :=
-  "2006-01-02 15:04:05"
-
- t, err :=
-  time.Parse(
-   layout,
-   date+" "+clock,
-  )
-
- if err != nil {
-
-  return clock
- }
-
- wib :=
-  t.Add(7 * time.Hour)
-
- return wib.Format(
-  "02 Jan 15:04",
- )
 }
 
 // =========================
@@ -952,72 +837,6 @@ func sendMatchDetail(
 	m :=
 		cachedMatches[index]
 
-	incidents :=
-		fetchIncidents(
-			m.ID,
-		)
-
-	var goals strings.Builder
-	var yellow strings.Builder
-	var red strings.Builder
-
-	for _, i := range incidents {
-
-		switch i.IncidentType {
-
-		case "goal":
-
-			goals.WriteString(
-				fmt.Sprintf(
-					"⚽ %d' %s\n",
-					i.Time,
-					i.Player.Name,
-				),
-			)
-
-		case "card":
-
-			yellow.WriteString(
-				fmt.Sprintf(
-					"🟨 %d' %s\n",
-					i.Time,
-					i.Player.Name,
-				),
-			)
-
-		case "redCard":
-
-			red.WriteString(
-				fmt.Sprintf(
-					"🟥 %d' %s\n",
-					i.Time,
-					i.Player.Name,
-				),
-			)
-		}
-	}
-
-	goalText :=
-		goals.String()
-
-	yellowText :=
-		yellow.String()
-
-	redText :=
-		red.String()
-
-	if goalText == "" {
-		goalText = "-"
-	}
-
-	if yellowText == "" {
-		yellowText = "-"
-	}
-
-	if redText == "" {
-		redText = "-"
-	}
-
 	msg :=
 		fmt.Sprintf(
 			`🌍 %s
@@ -1027,16 +846,14 @@ func sendMatchDetail(
 
 ⏱ %s
 
-🕒 %s %s WIB
-
 ⚽ Goal:
-%s
+-
 
 🟨 Yellow:
-%s
+-
 
 🟥 Red:
-%s`,
+-`,
 
 			m.Country,
 			m.League,
@@ -1048,15 +865,6 @@ func sendMatchDetail(
 			m.Away,
 
 			m.Status,
-
-			m.Date,
-			m.Time,
-
-			goalText,
-
-			yellowText,
-
-			redText,
 		)
 
 	sendTelegram(

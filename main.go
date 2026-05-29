@@ -651,6 +651,7 @@ func sendBigMatches(
 
 	matches :=
 		fetchBigMatches()
+	cachedMatches = matches
 
 	if len(matches) == 0 {
 
@@ -698,7 +699,9 @@ func sendBigMatches(
  ),
 )
 	}
-
+	msg.WriteString(
+	 "\nWatch:\n/WATCH 1",
+	)
 	sendTelegram(
 		chatID,
 		msg.String(),

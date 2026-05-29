@@ -400,7 +400,9 @@ func fetchLiveMatches() []Match {
 
 	url :=
 		"https://www.sofascore.com/api/v1/sport/football/events/live"
+	resp, err := http.Get(url)
 
+fmt.Println(resp.StatusCode)
 	req, _ :=
 		http.NewRequest(
 			"GET",

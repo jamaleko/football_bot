@@ -861,12 +861,12 @@ func watchRandom(
 			len(cachedMatches),
 		)
 
-	m := cachedMatches[number-1]
+	m := cachedMatches[index]
 
 userSessions[chatID] =
  &UserSession{
   Watching: true,
-  Index: number - 1,
+  Index: index,
 
   LastHome: m.HomeScore,
   LastAway: m.AwayScore,

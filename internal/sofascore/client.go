@@ -42,7 +42,7 @@ func (c *Client) ScheduledEvents(date string) ([]Event, error) {
     if err != nil {
         return nil, err
     }
-    fmt.Println("events:", len(events))
+    fmt.Println("events:", len(Events))
 
     return result.Events, nil
 }

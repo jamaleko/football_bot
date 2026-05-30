@@ -94,3 +94,19 @@ func main() {
 		time.Sleep(9 * time.Minute)
 	}
 }
+func toWib(utc string) string {
+
+ t, err := time.Parse(
+  time.RFC3339,
+  utc,
+ )
+ if err != nil {
+  return utc
+ }
+
+ return t.In(
+  time.FixedZone("WIB", 7*3600),
+ ).Format(
+  "02 Jan 2006 15:04 WIB",
+ )
+}

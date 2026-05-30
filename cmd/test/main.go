@@ -14,7 +14,7 @@ func main() {
 		nil,
 	)
 
-	req.Header.Set("X-Auth-Token", "TOKEN_BARU_KAMU")
+	req.Header.Set("X-Auth-Token", "40d8ae2308d148afa834e6253fab62fd")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

@@ -45,7 +45,7 @@ func main() {
 				// WC
 				wcMatches, _ := football.WorldCupMatches()
 
-				msg := ""
+				msg += ""
 				
 				for i, m := range wcMatches {
 				

@@ -1,29 +1,47 @@
 package footballdata
 
-type MatchesResponse struct {
-	Matches []Match `json:"matches"`
+import (
+	"encoding/json"
+	"net/http"
+)
+
+type Client struct {
+	token string
+	http  *http.Client
 }
 
-type Match struct {
-	ID       int  `json:"id"`
-	Status   string `json:"status"`
-
-	HomeTeam Team `json:"homeTeam"`
-	AwayTeam Team `json:"awayTeam"`
-
-	Score Score `json:"score"`
+func New(token string) *Client {
+	return &Client{
+		token: token,
+		http:  &http.Client{},
+	}
 }
 
-type Team struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-}
+func (c *Client) PremierLeagueMatches() ([]Match, error) {
 
-type Score struct {
-	FullTime FullTime `json:"fullTime"`
-}
+	req, err := http.NewRequest(
+		"GET",
+		"https://api.football-data.org/v4/competitions/PL/matches",
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
 
-type FullTime struct {
-	Home *int `json:"home"`
-	Away *int `json:"away"`
+	req.Header.Set("X-Auth-Token", c.token)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result MatchesResponse
+
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Matches, nil
 }

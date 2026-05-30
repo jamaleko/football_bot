@@ -1,22 +1,46 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"football_bot/internal/footballdata"
+ "encoding/json"
+ "fmt"
+ "net/http"
+ "os"
 )
 
 func main() {
 
-	client := footballdata.New(os.Getenv("TOKEN"))
+ req, err := http.NewRequest(
+  "GET",
+  "https://api.football-data.org/v4/matches/552096",
+  nil,
+ )
+ if err != nil {
+  panic(err)
+ }
 
-	match, err := client.Match(552096)
-	if err != nil {
-		panic(err)
-	}
+ req.Header.Set(
+  "X-Auth-Token",
+  os.Getenv("TOKEN"),
+ )
 
-	fmt.Println(match.ID)
-	fmt.Println(match.Status)
-	fmt.Println(match.HomeTeam.Name)
-	fmt.Println(match.AwayTeam.Name)
+ resp, err := http.DefaultClient.Do(req)
+ if err != nil {
+  panic(err)
+ }
+ defer resp.Body.Close()
+
+ var result map[string]any
+
+ err = json.NewDecoder(resp.Body).Decode(&result)
+ if err != nil {
+  panic(err)
+ }
+
+ b, _ := json.MarshalIndent(
+  result,
+  "",
+  "  ",
+ )
+
+ fmt.Println(string(b))
 }

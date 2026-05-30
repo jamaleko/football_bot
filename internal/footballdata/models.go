@@ -7,7 +7,7 @@ type MatchesResponse struct {
 type Match struct {
 	ID       int    `json:"id"`
 	Status   string `json:"status"`
-
+	UTCDate string `json:"utcDate"`
 	HomeTeam Team `json:"homeTeam"`
 	AwayTeam Team `json:"awayTeam"`
 }

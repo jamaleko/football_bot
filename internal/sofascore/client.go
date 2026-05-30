@@ -34,6 +34,7 @@ func (c *Client) ScheduledEvents(date string) ([]Event, error) {
     if err != nil {
         return nil, err
     }
+    fmt.Println("status:", resp.Status)
     defer resp.Body.Close()
 
     var result ScheduledEventsResponse
@@ -42,7 +43,6 @@ func (c *Client) ScheduledEvents(date string) ([]Event, error) {
     if err != nil {
         return nil, err
     }
-    fmt.Println("events:", len(Events))
 
     return result.Events, nil
 }

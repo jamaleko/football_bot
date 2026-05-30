@@ -4,6 +4,7 @@ import (
     "encoding/json"
     "fmt"
     "net/http"
+    "io"
 )
 
 type Client struct {
@@ -37,9 +38,11 @@ func (c *Client) ScheduledEvents(date string) ([]Event, error) {
     fmt.Println("status:", resp.Status)
     defer resp.Body.Close()
 
-    var result ScheduledEventsResponse
-
-    err = json.NewDecoder(resp.Body).Decode(&result)
+    body, _ := io.ReadAll(resp.Body)
+    
+    fmt.Println(string(body))
+    
+    return nil, nil
     if err != nil {
         return nil, err
     }

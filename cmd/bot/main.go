@@ -40,46 +40,52 @@ func main() {
 				bot.Send(update.Message.Chat.ID, "football_bot ready")
 
 			case text == "/big":
-				msg := "BIG MATCHES:\n\n"
 
-				// WC
-				wcMatches, _ := football.WorldCupMatches()
-
-				limit := 10
-
-				if len(wcMatches) < limit {
-				 limit = len(wcMatches)
-				}
-				
-				for i := 0; i < limit; i++ {
-				
-				 m := wcMatches[i]
-				
-				 msg += fmt.Sprintf(
-				  "%d. %s vs %s\n/watch %d\n\n",
-				  i+1,
-				  m.HomeTeam.Name,
-				  m.AwayTeam.Name,
-				  m.ID,
-				 )
-				}
-				
-				bot.Send(update.Message.Chat.ID, msg)
-
-				// CL
-				clMatches, _ := football.ChampionsLeagueMatches()
-				for i, m := range clMatches {
-					msg += fmt.Sprintf(
-					 "%d. %s vs %s\n%s\n/watch %d\n\n",
-					 i+1,
-					 m.HomeTeam.Name,
-					 m.AwayTeam.Name,
-					 toWib(m.UTCDate),
-					 m.ID,
-					)
-				}
-
-				bot.Send(update.Message.Chat.ID, msg)
+			 msg := "🏆 WORLD CUP\n\n"
+			
+			 wcMatches, err := football.WorldCupMatches()
+			 if err != nil {
+			  bot.Send(update.Message.Chat.ID, err.Error())
+			  continue
+			 }
+			
+			 limit := 10
+			 if len(wcMatches) < limit {
+			  limit = len(wcMatches)
+			 }
+			
+			 for i := 0; i < limit; i++ {
+			
+			  m := wcMatches[i]
+			
+			  msg += fmt.Sprintf(
+			   "%d. %s vs %s\n/watch %d\n\n",
+			   i+1,
+			   m.HomeTeam.Name,
+			   m.AwayTeam.Name,
+			   m.ID,
+			  )
+			 }
+			
+			 msg += "\n🏆 CHAMPIONS LEAGUE\n\n"
+			
+			 clMatches, err := football.ChampionsLeagueMatches()
+			 if err != nil {
+			  bot.Send(update.Message.Chat.ID, err.Error())
+			  continue
+			 }
+			
+			 for _, m := range clMatches {
+			
+			  msg += fmt.Sprintf(
+			   "%s vs %s\n/watch %d\n\n",
+			   m.HomeTeam.Name,
+			   m.AwayTeam.Name,
+			   m.ID,
+			  )
+			 }
+			
+			 bot.Send(update.Message.Chat.ID, msg)
 
 			case strings.HasPrefix(text, "/watch"):
 				parts := strings.Split(text, " ")

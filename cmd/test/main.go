@@ -1,31 +1,31 @@
 package main
 
 import (
-    "fmt"
-    "time"
-
-    "football_bot/internal/sofascore"
+	"fmt"
+	"io"
+	"net/http"
 )
 
 func main() {
-    
-    client := sofascore.New()
 
-    today := time.Now().Format("2006-01-02")
-    fmt.Println("START")
-    events, err := client.ScheduledEvents(today)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("CALL DONE")
-    for _, e := range events {
+	req, _ := http.NewRequest(
+		"GET",
+		"https://api.football-data.org/v4/competitions/PL",
+		nil,
+	)
 
-        fmt.Printf(
-            "%s\n%s vs %s\nEventID: %d\n\n",
-            e.Tournament.Name,
-            e.HomeTeam.Name,
-            e.AwayTeam.Name,
-            e.ID,
-        )
-    }
+	req.Header.Set("X-Auth-Token", "TOKEN_BARU_KAMU")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+
+	defer resp.Body.Close()
+
+	fmt.Println("status:", resp.Status)
+
+	body, _ := io.ReadAll(resp.Body)
+
+	fmt.Println(string(body))
 }

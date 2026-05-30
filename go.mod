@@ -1,3 +1,3 @@
-module footballbot
+module football_bot
 
-go 1.26.1
+go 1.24

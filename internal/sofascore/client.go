@@ -20,9 +20,10 @@ func New() *Client {
 func (c *Client) ScheduledEvents(date string) ([]Event, error) {
 
     url := fmt.Sprintf(
-        "https://www.sofascore.com/api/v1/sport/football/scheduled-events/%s",
+        "https://www.sofascore.com/api/v1/event/12437786",
         date,
     )
+    fmt.Println("url:", url)
 
     req, err := http.NewRequest("GET", url, nil)
     if err != nil {

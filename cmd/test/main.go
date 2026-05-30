@@ -2,30 +2,30 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"net/http"
+
+	"football_bot/internal/footballdata"
 )
 
 func main() {
 
-	req, _ := http.NewRequest(
-		"GET",
-		"https://api.football-data.org/v4/competitions/PL/matches",
-		nil,
-	)
+	client := footballdata.New("40d8ae2308d148afa834e6253fab62fd")
 
-	req.Header.Set("X-Auth-Token", "40d8ae2308d148afa834e6253fab62fd")
-
-	resp, err := http.DefaultClient.Do(req)
+	matches, err := client.PremierLeagueMatches()
 	if err != nil {
 		panic(err)
 	}
 
-	defer resp.Body.Close()
+	for i, m := range matches {
 
-	fmt.Println("status:", resp.Status)
+		if i >= 10 {
+			break
+		}
 
-	body, _ := io.ReadAll(resp.Body)
-
-	fmt.Println(string(body))
+		fmt.Printf(
+			"%d | %s vs %s\n",
+			m.ID,
+			m.HomeTeam.Name,
+			m.AwayTeam.Name,
+		)
+	}
 }

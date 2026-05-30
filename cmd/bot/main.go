@@ -102,9 +102,10 @@ func main() {
 			case text == "/stop":
 				bot.Send(update.Message.Chat.ID, "STOP pressed")
 				watchedMatches = map[int]int64{} // reset semua watch
+				lastStatus := map[int]string{}
 			}
 		}
-
+		
 		// Auto refresh untuk watched match
 		for id, chatID := range watchedMatches {
 			match, err := football.Match(id)
@@ -113,14 +114,31 @@ func main() {
 			}
 
 			// jika status berubah, kirim ke Telegram
-			if match.Status == "IN_PLAY" || match.Status == "PAUSED" || match.Status == "FINISHED" {
-				msg := fmt.Sprintf(
-					"%s vs %s\nStatus: %s\n",
-					match.HomeTeam.Name,
-					match.AwayTeam.Name,
-					match.Status,
-				)
-				bot.Send(chatID, msg)
+			if lastStatus[id] != match.Status {
+
+			 lastStatus[id] = match.Status
+			
+			 home := "-"
+			 away := "-"
+			
+			 if match.Score.FullTime.Home != nil {
+			  home = fmt.Sprintf("%d", *match.Score.FullTime.Home)
+			 }
+			
+			 if match.Score.FullTime.Away != nil {
+			  away = fmt.Sprintf("%d", *match.Score.FullTime.Away)
+			 }
+			
+			 msg := fmt.Sprintf(
+			  "⚽ %s %s-%s %s\nStatus: %s",
+			  match.HomeTeam.Name,
+			  home,
+			  away,
+			  match.AwayTeam.Name,
+			  match.Status,
+			 )
+			
+			 bot.Send(chatID, msg)
 			}
 		}
 

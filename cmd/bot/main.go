@@ -45,19 +45,22 @@ func main() {
 				// WC
 				wcMatches, _ := football.WorldCupMatches()
 
-				msg += ""
+				limit := 10
+
+				if len(wcMatches) < limit {
+				 limit = len(wcMatches)
+				}
 				
-				for i, m := range wcMatches {
+				for i := 0; i < limit; i++ {
 				
-				 if i >= 10 {
-				  break
-				 }
+				 m := wcMatches[i]
 				
 				 msg += fmt.Sprintf(
-				  "%d. %s vs %s\n",
+				  "%d. %s vs %s\n/watch %d\n\n",
 				  i+1,
 				  m.HomeTeam.Name,
 				  m.AwayTeam.Name,
+				  m.ID,
 				 )
 				}
 				

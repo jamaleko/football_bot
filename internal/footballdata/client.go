@@ -75,31 +75,32 @@ func (c *Client) ChampionsLeagueMatches() ([]Match, error) {
 }
 func (c *Client) Match(id int) (*Match, error) {
 
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://api.football-data.org/v4/matches/%d", id),
-		nil,
-	)
-	if err != nil {
-		return nil, err
-	}
+ req, err := http.NewRequest(
+  "GET",
+  fmt.Sprintf("https://api.football-data.org/v4/matches/%d", id),
+  nil,
+ )
+ if err != nil {
+  return nil, err
+ }
 
-	req.Header.Set("X-Auth-Token", c.token)
+ req.Header.Set(
+  "X-Auth-Token",
+  c.token,
+ )
 
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+ resp, err := c.http.Do(req)
+ if err != nil {
+  return nil, err
+ }
+ defer resp.Body.Close()
 
-	var result struct {
-		Match Match `json:"match"`
-	}
+ var match Match
 
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	if err != nil {
-		return nil, err
-	}
+ err = json.NewDecoder(resp.Body).Decode(&match)
+ if err != nil {
+  return nil, err
+ }
 
-	return &result.Match, nil
+ return &match, nil
 }

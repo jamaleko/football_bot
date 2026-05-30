@@ -3,6 +3,7 @@ package footballdata
 import (
 	"encoding/json"
 	"net/http"
+	"fmt"
 )
 
 type Client struct {
@@ -71,4 +72,34 @@ func (c *Client) ChampionsLeagueMatches() ([]Match, error) {
 	}
 
 	return result.Matches, nil
+}
+func (c *Client) Match(id int) (*Match, error) {
+
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("https://api.football-data.org/v4/matches/%d", id),
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("X-Auth-Token", c.token)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Match Match `json:"match"`
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result.Match, nil
 }

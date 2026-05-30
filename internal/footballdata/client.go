@@ -21,7 +21,7 @@ func (c *Client) PremierLeagueMatches() ([]Match, error) {
 
 	req, err := http.NewRequest(
 		"GET",
-		"https://api.football-data.org/v4/competitions/WC/matches?status=SCHEDULED",
+		"https://api.football-data.org/v4/matches/537327",
 		nil,
 	)
 	if err != nil {

@@ -29,46 +29,45 @@ func main() {
 
 			for id, chatID := range watchedMatches {
 
-				match, err := football.Match(id)
-				if err != nil {
-					continue
-				}
-
-				home := "-"
-				away := "-"
-				
-				if match.Score.FullTime.Home != nil {
-				 home = fmt.Sprintf("%d", *match.Score.FullTime.Home)
-				}
-				
-				if match.Score.FullTime.Away != nil {
-				 away = fmt.Sprintf("%d", *match.Score.FullTime.Away)
-				}
-				
-				currentScore := home + "-" + away
-				
-				if lastScore[id] != currentScore {
-				
-				 lastScore[id] = currentScore
-				
-				 msg := fmt.Sprintf(
-				  "⚽ %s %s-%s %s\nStatus: %s",
-				  match.HomeTeam.Name,
-				  home,
-				  away,
-				  match.AwayTeam.Name,
-				  match.Status,
-				 )
-				
-				 bot.Send(chatID, msg)
-				
-				 if match.Status == "FINISHED" {
-				  delete(watchedMatches, id)
-				  delete(lastScore, id)
-				 }
-				}
+			 match, err := football.Match(id)
+			 if err != nil {
+			  continue
+			 }
+			
+			 home := "-"
+			 away := "-"
+			
+			 if match.Score.FullTime.Home != nil {
+			  home = fmt.Sprintf("%d", *match.Score.FullTime.Home)
+			 }
+			
+			 if match.Score.FullTime.Away != nil {
+			  away = fmt.Sprintf("%d", *match.Score.FullTime.Away)
+			 }
+			
+			 current := home + "-" + away + "|" + match.Status
+			
+			 if lastScore[id] != current {
+			
+			  lastScore[id] = current
+			
+			  msg := fmt.Sprintf(
+			   "⚽ %s %s-%s %s\nStatus: %s",
+			   match.HomeTeam.Name,
+			   home,
+			   away,
+			   match.AwayTeam.Name,
+			   match.Status,
+			  )
+			
+			  bot.Send(chatID, msg)
+			
+			  if match.Status == "FINISHED" {
+			   delete(watchedMatches, id)
+			   delete(lastScore, id)
+			  }
+			 }
 			}
-
 			time.Sleep(1 * time.Minute)
 		}
 	}()

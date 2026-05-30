@@ -1,9 +1,6 @@
 name: Test Aja Dulu
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:

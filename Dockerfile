@@ -4,6 +4,8 @@ WORKDIR /app
 
 COPY . .
 
-RUN go build -o bot .
+RUN go mod download
+
+RUN go build -o bot ./cmd/test
 
 CMD ["./bot"]

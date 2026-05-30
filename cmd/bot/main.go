@@ -1,37 +1,70 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
+	"time"
 
-	"github.com/go-telegram/bot"
+	"football_bot/internal/telegram"
 )
 
 func main() {
 
-	b, err := bot.New(os.Getenv("BOT_TOKEN"))
-	if err != nil {
-		panic(err)
-	}
-
-	b.RegisterHandler(
-		bot.HandlerTypeMessageText,
-		"/start",
-		bot.MatchTypePrefix,
-		func(ctx context.Context, b *bot.Bot, update *bot.Update) {
-
-			b.SendMessage(
-				ctx,
-				&bot.SendMessageParams{
-					ChatID: update.Message.Chat.ID,
-					Text:   "football_bot ready",
-				},
-			)
-		},
+	bot := telegram.New(
+		os.Getenv("BOT_TOKEN"),
 	)
 
 	fmt.Println("bot started")
 
-	b.Start(context.Background())
+	offset := 0
+
+	for {
+
+		updates, err := bot.Updates(offset)
+		if err != nil {
+
+			fmt.Println(err)
+
+			time.Sleep(
+				5 * time.Second,
+			)
+
+			continue
+		}
+
+		for _, update := range updates.Result {
+
+			offset = update.UpdateID + 1
+
+			text := update.Message.Text
+
+			switch text {
+
+			case "/start":
+
+				bot.Send(
+					update.Message.Chat.ID,
+					"football_bot ready",
+				)
+
+			case "/big":
+
+				bot.Send(
+					update.Message.Chat.ID,
+					"BIG pressed",
+				)
+
+			case "/stop":
+
+				bot.Send(
+					update.Message.Chat.ID,
+					"STOP pressed",
+				)
+			}
+		}
+
+		time.Sleep(
+			2 * time.Second,
+		)
+	}
 }

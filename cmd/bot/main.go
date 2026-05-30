@@ -69,7 +69,7 @@ func main() {
 				}
 			}
 
-			time.Sleep(9 * time.Minute)
+			time.Sleep(1 * time.Minute)
 		}
 	}()
 

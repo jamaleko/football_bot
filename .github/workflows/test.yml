@@ -1,17 +1,26 @@
-name: Test Sofascore
+name: Test Aja Dulu
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
 
+    env:
+      TOKEN: ${{ secrets.TOKEN }}  # <-- ini yang nambahin env
+
     steps:
-      - uses: actions/checkout@v4
+    - name: Checkout repo
+      uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
 
-      - run: go run ./cmd/test
+    - name: Run Go test/main
+      run: go run ./cmd/test

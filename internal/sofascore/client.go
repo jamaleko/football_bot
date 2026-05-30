@@ -35,17 +35,14 @@ func (c *Client) ScheduledEvents(date string) ([]Event, error) {
     if err != nil {
         return nil, err
     }
+
     fmt.Println("status:", resp.Status)
+
     defer resp.Body.Close()
 
     body, _ := io.ReadAll(resp.Body)
-    
-    fmt.Println(string(body))
-    
-    return nil, nil
-    if err != nil {
-        return nil, err
-    }
 
-    return result.Events, nil
+    fmt.Println(string(body))
+
+    return nil, nil
 }

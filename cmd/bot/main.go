@@ -22,7 +22,7 @@ func main() {
 
 	watchedMatches := map[int]int64{}
 	lastScore := map[int]string{}
-
+	secondHalf := map[int]bool{}
 	go func() {
 
 		for {
@@ -44,8 +44,33 @@ func main() {
 			 if match.Score.FullTime.Away != nil {
 			  away = fmt.Sprintf("%d", *match.Score.FullTime.Away)
 			 }
+			status := match.Status
+
+			if status == "PAUSED" {
+			 secondHalf[id] = true
+			}
 			
-			 current := home + "-" + away + "|" + match.Status
+			if status == "TIMED" {
+			 status = "Not Started"
+			}
+			
+			if status == "IN_PLAY" {
+			
+			 if secondHalf[id] {
+			  status = "2nd Half"
+			 } else {
+			  status = "1st Half"
+			 }
+			}
+			
+			if status == "PAUSED" {
+			 status = "Half Time"
+			}
+			
+			if status == "FINISHED" {
+			 status = "Full Time"
+			}
+			 current := home + "-" + away + "|" + status
 			
 			 if lastScore[id] != current {
 			
@@ -57,7 +82,7 @@ func main() {
 			   home,
 			   away,
 			   match.AwayTeam.Name,
-			   match.Status,
+			   status,
 			  )
 			
 			  bot.Send(chatID, msg)
@@ -65,6 +90,7 @@ func main() {
 			  if match.Status == "FINISHED" {
 			   delete(watchedMatches, id)
 			   delete(lastScore, id)
+			   delete(secondHalf, id)
 			  }
 			 }
 			}

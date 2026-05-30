@@ -91,7 +91,7 @@ func main() {
 			}
 		}
 
-		time.Sleep(9 * time.Minute)
+		time.Sleep(10 * time.Second)
 	}
 }
 func toWib(utc string) string {

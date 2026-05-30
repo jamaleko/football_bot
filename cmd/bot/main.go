@@ -19,7 +19,7 @@ func main() {
 	fmt.Println("bot started")
 
 	offset := 0
-	watchedMatches := map[int]bool{} // simpan match ID yang di-watch
+	watchedMatches := map[int]int64{} // simpan match ID yang di-watch
 
 	for {
 		updates, err := bot.Updates(offset)
@@ -61,7 +61,7 @@ func main() {
 				if len(parts) == 2 {
 					id, err := strconv.Atoi(parts[1])
 					if err == nil {
-						watchedMatches[id] = true
+						watchedMatches[id] = update.Message.Chat.ID
 						bot.Send(update.Message.Chat.ID, fmt.Sprintf("Watching match %d", id))
 					}
 				}
@@ -73,7 +73,7 @@ func main() {
 		}
 
 		// Auto refresh untuk watched match
-		for id := range watchedMatches {
+		for id, chatID := range watchedMatches {
 			match, err := football.Match(id)
 			if err != nil {
 				continue
@@ -87,7 +87,7 @@ func main() {
 					match.AwayTeam.Name,
 					match.Status,
 				)
-				bot.Send(os.Getenv("TELEGRAM_CHAT_ID"), msg)
+				bot.Send(chatID, msg)
 			}
 		}
 

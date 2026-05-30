@@ -20,6 +20,7 @@ func main() {
 
 	offset := 0
 	watchedMatches := map[int]int64{} // simpan match ID yang di-watch
+	lastStatus := map[int]string{}
 
 	for {
 		updates, err := bot.Updates(offset)
@@ -102,7 +103,7 @@ func main() {
 			case text == "/stop":
 				bot.Send(update.Message.Chat.ID, "STOP pressed")
 				watchedMatches = map[int]int64{} // reset semua watch
-				lastStatus := map[int]string{}
+				
 			}
 		}
 		

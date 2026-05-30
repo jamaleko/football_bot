@@ -59,10 +59,11 @@ func main() {
 			  m := wcMatches[i]
 			
 			  msg += fmt.Sprintf(
-			   "%d. %s vs %s\n/watch %d\n\n",
+			   "%d. %s vs %s\n%s\n/watch %d\n\n",
 			   i+1,
 			   m.HomeTeam.Name,
 			   m.AwayTeam.Name,
+			   toWib(m.UTCDate),
 			   m.ID,
 			  )
 			 }
@@ -78,9 +79,10 @@ func main() {
 			 for _, m := range clMatches {
 			
 			  msg += fmt.Sprintf(
-			   "%s vs %s\n/watch %d\n\n",
+			   "%s vs %s\n%s\n/watch %d\n\n",
 			   m.HomeTeam.Name,
 			   m.AwayTeam.Name,
+			   toWib(m.UTCDate),
 			   m.ID,
 			  )
 			 }

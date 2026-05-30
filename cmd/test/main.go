@@ -10,7 +10,7 @@ func main() {
 
 	req, _ := http.NewRequest(
 		"GET",
-		"https://api.football-data.org/v4/competitions/PL",
+		"https://api.football-data.org/v4/competitions/PL/matches",
 		nil,
 	)
 

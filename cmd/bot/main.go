@@ -44,16 +44,24 @@ func main() {
 
 				// WC
 				wcMatches, _ := football.WorldCupMatches()
+
+				msg := ""
+				
 				for i, m := range wcMatches {
-					msg += fmt.Sprintf(
-					 "%d. %s vs %s\n%s\n/watch %d\n\n",
-					 i+1,
-					 m.HomeTeam.Name,
-					 m.AwayTeam.Name,
-					 toWib(m.UTCDate),
-					 m.ID,
-					)
+				
+				 if i >= 10 {
+				  break
+				 }
+				
+				 msg += fmt.Sprintf(
+				  "%d. %s vs %s\n",
+				  i+1,
+				  m.HomeTeam.Name,
+				  m.AwayTeam.Name,
+				 )
 				}
+				
+				bot.Send(update.Message.Chat.ID, msg)
 
 				// CL
 				clMatches, _ := football.ChampionsLeagueMatches()

@@ -68,7 +68,7 @@ func main() {
 
 			case text == "/stop":
 				bot.Send(update.Message.Chat.ID, "STOP pressed")
-				watchedMatches = map[int]bool{} // reset semua watch
+				watchedMatches = map[int]int64{} // reset semua watch
 			}
 		}
 

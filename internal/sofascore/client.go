@@ -21,7 +21,6 @@ func (c *Client) ScheduledEvents(date string) ([]Event, error) {
 
     url := fmt.Sprintf(
         "https://www.sofascore.com/api/v1/event/12437786",
-        date,
     )
     fmt.Println("url:", url)
 

@@ -18,6 +18,7 @@ type Team struct {
 	Name string `json:"name"`
 }
 type Score struct {
+ Duration string	`json:"duration"`
  FullTime FullTime `json:"fullTime"`
 }
 

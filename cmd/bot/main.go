@@ -44,31 +44,36 @@ func main() {
 			 if match.Score.FullTime.Away != nil {
 			  away = fmt.Sprintf("%d", *match.Score.FullTime.Away)
 			 }
-			status := match.Status
+			status := ""
 
-			if status == "PAUSED" {
-			 secondHalf[id] = true
+			if match.Status == "PAUSED" {
+			    secondHalf[id] = true
 			}
 			
-			if status == "TIMED" {
-			 status = "Not Started"
-			}
+			switch {
+			case match.Status == "FINISHED":
+			    status = "Full Time"
 			
-			if status == "IN_PLAY" {
+			case match.Score.Duration == "PENALTY_SHOOTOUT":
+			    status = "Penalties"
 			
-			 if secondHalf[id] {
-			  status = "2nd Half"
-			 } else {
-			  status = "1st Half"
-			 }
-			}
+			case match.Score.Duration == "EXTRA_TIME":
+			    status = "Extra Time"
 			
-			if status == "PAUSED" {
-			 status = "Half Time"
-			}
+			case match.Status == "TIMED":
+			    status = "Not Started"
 			
-			if status == "FINISHED" {
-			 status = "Full Time"
+			case match.Status == "PAUSED":
+			    status = "Half Time"
+			
+			case match.Status == "IN_PLAY" && secondHalf[id]:
+			    status = "2nd Half"
+			
+			case match.Status == "IN_PLAY":
+			    status = "1st Half"
+			
+			default:
+			    status = match.Status
 			}
 			 current := home + "-" + away + "|" + status
 			

@@ -1,0 +1,37 @@
+name: Football Bot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    env:
+      TOKEN: ${{ secrets.TOKEN }}
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - run: go run ./cmd/bot
+
+      - name: Commit JSON
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          git add *.json
+
+          git diff --cached --quiet || git commit -m "update state"
+
+          git push

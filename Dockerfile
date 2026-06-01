@@ -6,6 +6,6 @@ COPY . .
 
 RUN go mod download
 
-RUN go build -o bot ./cmd/test
+RUN go build -o bot ./cmd/live
 
 CMD ["./bot"]

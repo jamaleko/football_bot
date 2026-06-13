@@ -44,6 +44,13 @@ func main() {
 			 if match.Score.FullTime.Away != nil {
 			  away = fmt.Sprintf("%d", *match.Score.FullTime.Away)
 			 }
+				if home == "-" && away == "-" && lastScore[id] != "" {
+    continue
+}
+
+if match.Status == "TIMED" && lastScore[id] != "" {
+    continue
+}
 			status := match.Status
 
 switch {

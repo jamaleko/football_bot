@@ -22,7 +22,7 @@ func main() {
 
 	watchedMatches := map[int]int64{}
 	lastScore := map[int]string{}
-	//secondHalf := map[int]bool{}
+	secondHalf := map[int]bool{}
 	go func() {
 
 		for {
@@ -51,27 +51,34 @@ func main() {
 if match.Status == "TIMED" && lastScore[id] != "" {
     continue
 }
-			status := match.Status
+			if match.Status == "PAUSED" {
+    secondHalf[id] = true
+}
+
+status := match.Status
 
 switch {
 
 case match.Status == "FINISHED":
- status = "Full Time"
+    status = "Full Time"
 
 case match.Score.Duration == "PENALTY_SHOOTOUT":
- status = "Penalties"
+    status = "Penalties"
 
 case match.Score.Duration == "EXTRA_TIME":
- status = "Extra Time"
+    status = "Extra Time"
 
 case match.Status == "PAUSED":
- status = "Half Time"
+    status = "Half Time"
+
+case match.Status == "IN_PLAY" && secondHalf[id]:
+    status = "2nd Half"
 
 case match.Status == "IN_PLAY":
- status = "Live"
+    status = "1st Half"
 
 case match.Status == "TIMED":
- status = "Not Started"
+    status = "Not Started"
 }
 			 current := home + "-" + away + "|" + status
 			
@@ -93,7 +100,7 @@ case match.Status == "TIMED":
 			  if match.Status == "FINISHED" {
 			   delete(watchedMatches, id)
 			   delete(lastScore, id)
-			   //delete(secondHalf, id)
+			   delete(secondHalf, id)
 			  }
 			 }
 			}

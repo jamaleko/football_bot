@@ -73,6 +73,34 @@ func (c *Client) LigaInggrisMatches() ([]Match, error) {
 
 	return result.Matches, nil
 }
+func (c *Client) LigaSpanyolMatches() ([]Match, error) {
+
+	req, err := http.NewRequest(
+		"GET",
+		"https://api.football-data.org/v4/competitions/PD/matches?status=SCHEDULED",
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("X-Auth-Token", c.token)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result MatchesResponse
+
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Matches, nil
+}
 func (c *Client) ChampionsLeagueMatches() ([]Match, error) {
 
 	req, err := http.NewRequest(

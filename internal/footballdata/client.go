@@ -49,7 +49,7 @@ func (c *Client) ChampionsLeagueMatches() ([]Match, error) {
 
 	req, err := http.NewRequest(
 		"GET",
-		"https://api.football-data.org/v4/competitions/PD/matches?status=SCHEDULED",
+		"https://api.football-data.org/v4/competitions/WC/matches?status=SCHEDULED",
 		nil,
 	)
 	if err != nil {

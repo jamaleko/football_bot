@@ -138,6 +138,7 @@ case match.Status == "TIMED":
 				msg := "🏆 WORLD CUP\n\n"
 
 				wcMatches, err := football.WorldCupMatches()
+				fmt.Println("WORLD CUP/PL SELESAI", err, len(wcMatches))
 				if err != nil {
 					bot.Send(update.Message.Chat.ID, err.Error())
 					continue

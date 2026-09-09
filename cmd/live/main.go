@@ -137,20 +137,20 @@ case match.Status == "TIMED":
 
 				msg := "🏆 LIGA INGGRIS\n\n"
 
-				plMatches, err := football.LigaInggrisMatches()
-				fmt.Println("LA LIGA SELESAI", err, len(plMatches))
+				pdMatches, err := football.LigaInggrisMatches()
+				fmt.Println("LIGA INGGRIS SELESAI", err, len(pdMatches))
 				if err := bot.Send(update.Message.Chat.ID, msg); err != nil {
 				    fmt.Println("BIG SEND ERROR:", err)
 				}
 
 				limit := 10
-				if len(plMatches) < limit {
-					limit = len(plMatches)
+				if len(pdMatches) < limit {
+					limit = len(pdMatches)
 				}
 
 				for i := 0; i < limit; i++ {
 
-					m := plMatches[i]
+					m := pdMatches[i]
 
 					msg += fmt.Sprintf(
 						"%d. %s vs %s\n%s\n/watch %d\n\n",
@@ -162,6 +162,33 @@ case match.Status == "TIMED":
 					)
 				}
 
+				msg := "🏆 LA LIGA\n\n"
+
+				pdMatches, err := football.LigaSpanyolMatches()
+				fmt.Println("LA LIGA SELESAI", err, len(pdMatches))
+				if err := bot.Send(update.Message.Chat.ID, msg); err != nil {
+				    fmt.Println("BIG SEND ERROR:", err)
+				}
+
+				limit := 10
+				if len(pdMatches) < limit {
+					limit = len(pdMatches)
+				}
+
+				for i := 0; i < limit; i++ {
+
+					m := pdMatches[i]
+
+					msg += fmt.Sprintf(
+						"%d. %s vs %s\n%s\n/watch %d\n\n",
+						i+1,
+						m.HomeTeam.Name,
+						m.AwayTeam.Name,
+						toWib(m.UTCDate),
+						m.ID,
+					)
+				}
+				
 				msg += "\n🏆 CHAMPIONS LEAGUE\n\n"
 
 				clMatches, err := football.ChampionsLeagueMatches()

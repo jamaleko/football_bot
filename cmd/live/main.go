@@ -133,6 +133,7 @@ case match.Status == "TIMED":
 				)
 
 			case text == "/big":
+				fmt.Println("BIG TERPANGGIL")
 
 				msg := "🏆 WORLD CUP\n\n"
 

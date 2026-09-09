@@ -170,7 +170,7 @@ case match.Status == "TIMED":
 				    fmt.Println("BIG SEND ERROR:", err)
 				}
 
-				limit := 10
+				limit = 10
 				if len(pdMatches) < limit {
 					limit = len(pdMatches)
 				}

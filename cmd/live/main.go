@@ -137,20 +137,21 @@ case match.Status == "TIMED":
 
 				msg := "🏆 LIGA INGGRIS\n\n"
 
-				pdMatches, err := football.LigaInggrisMatches()
-				fmt.Println("LIGA INGGRIS SELESAI", err, len(pdMatches))
-				if err := bot.Send(update.Message.Chat.ID, msg); err != nil {
-				    fmt.Println("BIG SEND ERROR:", err)
-				}
+				plMatches, err := football.LigaInggrisMatches()
+				fmt.Println("LIGA INGGRIS SELESAI", err, len(plMatches))
+				if err != nil {
+			        bot.Send(update.Message.Chat.ID, err.Error())
+			        continue
+			    }
 
 				limit := 10
-				if len(pdMatches) < limit {
-					limit = len(pdMatches)
+				if len(plMatches) < limit {
+					limit = len(plMatches)
 				}
 
 				for i := 0; i < limit; i++ {
 
-					m := pdMatches[i]
+					m := plMatches[i]
 
 					msg += fmt.Sprintf(
 						"%d. %s vs %s\n%s\n/watch %d\n\n",
@@ -166,9 +167,10 @@ case match.Status == "TIMED":
 
 				pdMatches, err := football.LigaSpanyolMatches()
 				fmt.Println("LA LIGA SELESAI", err, len(pdMatches))
-				if err := bot.Send(update.Message.Chat.ID, msg); err != nil {
-				    fmt.Println("BIG SEND ERROR:", err)
-				}
+				if err != nil {
+			        bot.Send(update.Message.Chat.ID, err.Error())
+			        continue
+			    }
 
 				limit = 10
 				if len(pdMatches) < limit {
@@ -193,9 +195,10 @@ case match.Status == "TIMED":
 
 				clMatches, err := football.ChampionsLeagueMatches()
 				fmt.Println("CHAMPIONS LEAGUE SELESAI", err, len(clMatches))
-				if err := bot.Send(update.Message.Chat.ID, msg); err != nil {
-				    fmt.Println("BIG SEND ERROR:", err)
-				}
+				if err != nil {
+			        bot.Send(update.Message.Chat.ID, err.Error())
+			        continue
+			    }
 
 				limit = 10
 				if len(clMatches) < limit {
@@ -216,7 +219,9 @@ case match.Status == "TIMED":
 				    )
 				}
 
-				bot.Send(update.Message.Chat.ID, msg)
+				if err := bot.Send(update.Message.Chat.ID, msg); err != nil {
+			        fmt.Println("BIG SEND ERROR:", err)
+			    }
 
 			case strings.HasPrefix(text, "/watch"):
 

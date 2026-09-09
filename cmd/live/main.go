@@ -166,6 +166,7 @@ case match.Status == "TIMED":
 				msg += "\n🏆 CHAMPIONS LEAGUE\n\n"
 
 				clMatches, err := football.ChampionsLeagueMatches()
+				fmt.Println("LA LIGA SELESAI", err, len(clMatches))
 				if err != nil {
 					bot.Send(update.Message.Chat.ID, err.Error())
 					continue

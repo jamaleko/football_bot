@@ -162,7 +162,7 @@ case match.Status == "TIMED":
 					)
 				}
 
-				msg += "🏆 LA LIGA\n\n"
+				msg += "\n🏆 LA LIGA\n\n"
 
 				pdMatches, err := football.LigaSpanyolMatches()
 				fmt.Println("LA LIGA SELESAI", err, len(pdMatches))

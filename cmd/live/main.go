@@ -135,23 +135,22 @@ case match.Status == "TIMED":
 			case text == "/big":
 				fmt.Println("BIG TERPANGGIL")
 
-				msg := "🏆 WORLD CUP\n\n"
+				msg := "🏆 LIGA INGGRIS\n\n"
 
-				wcMatches, err := football.WorldCupMatches()
-				fmt.Println("WORLD CUP/PL SELESAI", err, len(wcMatches))
-				if err != nil {
-					bot.Send(update.Message.Chat.ID, err.Error())
-					continue
+				plMatches, err := football.LigaInggrisMatches()
+				fmt.Println("LA LIGA SELESAI", err, len(plMatches))
+				if err := bot.Send(update.Message.Chat.ID, msg); err != nil {
+				    fmt.Println("BIG SEND ERROR:", err)
 				}
 
 				limit := 10
-				if len(wcMatches) < limit {
-					limit = len(wcMatches)
+				if len(plMatches) < limit {
+					limit = len(plMatches)
 				}
 
 				for i := 0; i < limit; i++ {
 
-					m := wcMatches[i]
+					m := plMatches[i]
 
 					msg += fmt.Sprintf(
 						"%d. %s vs %s\n%s\n/watch %d\n\n",
@@ -166,21 +165,28 @@ case match.Status == "TIMED":
 				msg += "\n🏆 CHAMPIONS LEAGUE\n\n"
 
 				clMatches, err := football.ChampionsLeagueMatches()
-				fmt.Println("LA LIGA SELESAI", err, len(clMatches))
-				if err != nil {
-					bot.Send(update.Message.Chat.ID, err.Error())
-					continue
+				fmt.Println("CHAMPIONS LEAGUE SELESAI", err, len(clMatches))
+				if err := bot.Send(update.Message.Chat.ID, msg); err != nil {
+				    fmt.Println("BIG SEND ERROR:", err)
 				}
 
-				for _, m := range clMatches {
-
-					msg += fmt.Sprintf(
-						"%s vs %s\n%s\n/watch %d\n\n",
-						m.HomeTeam.Name,
-						m.AwayTeam.Name,
-						toWib(m.UTCDate),
-						m.ID,
-					)
+				limit = 10
+				if len(clMatches) < limit {
+				    limit = len(clMatches)
+				}
+				
+				for i := 0; i < limit; i++ {
+				
+				    m := clMatches[i]
+				
+				    msg += fmt.Sprintf(
+				        "%d. %s vs %s\n%s\n/watch %d\n\n",
+				        i+1,
+				        m.HomeTeam.Name,
+				        m.AwayTeam.Name,
+				        toWib(m.UTCDate),
+				        m.ID,
+				    )
 				}
 
 				bot.Send(update.Message.Chat.ID, msg)
